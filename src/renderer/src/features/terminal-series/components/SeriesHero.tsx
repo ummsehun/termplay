@@ -1,60 +1,96 @@
 import React from 'react';
 import { useTerminalSeriesStore } from '../stores/terminalSeriesStore';
-import { StatusBadge } from '../../../shared/components/StatusBadge';
-import { SeriesActionBar } from './SeriesActionBar';
-import { GitBranch, HardDrive, Cpu } from 'lucide-react';
+import { cn } from '../../../shared/lib/cn';
+import { TerminalSeriesTab } from '../types/terminalSeriesTypes';
+import { SeriesMetadata } from './SeriesMetadata';
+import { SeriesAssetsPanel } from './SeriesAssetsPanel';
+import { SeriesLogsPanel } from './SeriesLogsPanel';
+import { Package, Wrench, Calendar, BookOpen } from 'lucide-react';
 
 export const SeriesHero: React.FC = () => {
-  const { series, selectedSeriesId } = useTerminalSeriesStore();
+  const { series, selectedSeriesId, selectedTab, setSelectedTab } = useTerminalSeriesStore();
   const currentSeries = series.find(s => s.id === selectedSeriesId);
 
   if (!currentSeries) return null;
 
+  const tabs: { id: TerminalSeriesTab; label: string }[] = [
+    { id: 'overview', label: 'Events' },
+    { id: 'assets', label: 'Notices' },
+    { id: 'logs', label: 'Info' },
+  ];
+
   return (
-    <div className="relative pt-24 px-12 pb-12 overflow-hidden shrink-0">
-      {/* Background Decor */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-launcher-terminal/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-
-      <div className="relative z-10 max-w-4xl">
-        <div className="flex items-center gap-4 mb-4">
-          <StatusBadge status={currentSeries.status} />
-          {currentSeries.installedVersion && (
-            <span className="text-sm font-mono text-launcher-textMuted bg-launcher-surface px-2 py-1 rounded-md border border-launcher-border">
-              {currentSeries.installedVersion}
-            </span>
-          )}
+    <div className="w-[480px] h-full pt-20 pl-16 pb-12 flex flex-col pointer-events-none">
+      {/* Title / Logo Area */}
+      <div className="mb-8 pointer-events-auto">
+        <h1 className="text-6xl font-black text-white italic tracking-tighter drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]">
+          {currentSeries.displayName.toUpperCase()}
+        </h1>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="px-2 py-0.5 bg-launcher-accent/80 backdrop-blur text-white text-xs font-bold uppercase tracking-widest rounded-sm">
+            Terminal Edition
+          </span>
         </div>
+      </div>
 
-        <h2 className="text-5xl font-black text-white tracking-tight mb-4 drop-shadow-lg">
-          {currentSeries.displayName}
-        </h2>
-
-        <p className="text-lg text-launcher-textMuted max-w-2xl leading-relaxed mb-8">
-          {currentSeries.description}
-        </p>
-
-        <div className="flex flex-wrap gap-6 mb-12">
-          <div className="flex items-center gap-2 text-sm text-launcher-textMuted">
-            <GitBranch size={16} />
-            <a href={currentSeries.repositoryUrl} target="_blank" rel="noreferrer" className="hover:text-launcher-primary transition-colors">
-              Repository
-            </a>
+      {/* Mock Image Carousel */}
+      <div className="w-full h-48 bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl mb-4 overflow-hidden relative pointer-events-auto shadow-2xl">
+        <div className="absolute inset-0 bg-gradient-to-tr from-launcher-accent/20 to-transparent mix-blend-overlay" />
+        <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
+          <h3 className="text-white font-bold text-xl drop-shadow-md">New Updates Available</h3>
+          <div className="flex gap-1">
+            <div className="w-2 h-2 rounded-full bg-white" />
+            <div className="w-2 h-2 rounded-full bg-white/30" />
+            <div className="w-2 h-2 rounded-full bg-white/30" />
           </div>
-          {currentSeries.installPath && (
-            <div className="flex items-center gap-2 text-sm text-launcher-textMuted">
-              <HardDrive size={16} />
-              <span className="font-mono text-xs">{currentSeries.installPath}</span>
-            </div>
-          )}
-          {currentSeries.runtimeRequirements.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-launcher-textMuted">
-              <Cpu size={16} />
-              <span>Requires: {currentSeries.runtimeRequirements.join(', ')}</span>
-            </div>
-          )}
         </div>
+      </div>
 
-        <SeriesActionBar />
+      {/* Translucent Content Panel (Events/Notices/Info) */}
+      <div className="w-full flex-1 flex flex-col bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl mb-4 pointer-events-auto overflow-hidden shadow-2xl">
+        <div className="flex gap-6 px-6 pt-4 border-b border-white/10">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setSelectedTab(tab.id)}
+              className={cn(
+                "pb-3 text-sm font-bold uppercase tracking-wider transition-colors relative",
+                selectedTab === tab.id ? "text-white" : "text-white/50 hover:text-white/80"
+              )}
+            >
+              {tab.label}
+              {selectedTab === tab.id && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white shadow-[0_-2px_10px_rgba(255,255,255,0.5)]" />
+              )}
+            </button>
+          ))}
+        </div>
+        
+        <div className="flex-1 relative overflow-y-auto scrollbar-none">
+          {selectedTab === 'overview' && <SeriesMetadata />}
+          {selectedTab === 'assets' && <SeriesAssetsPanel />}
+          {selectedTab === 'logs' && <SeriesLogsPanel />}
+          {/* Settings tab removed from main loop to match UI, can be accessed from sidebar */}
+        </div>
+      </div>
+
+      {/* Quick Action Icons Panel */}
+      <div className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex justify-between items-center pointer-events-auto shadow-2xl">
+        {[
+          { icon: Wrench, label: 'Toolbox' },
+          { icon: Calendar, label: 'Check-In' },
+          { icon: Package, label: 'Assets' },
+          { icon: BookOpen, label: 'Wiki' }
+        ].map((item, idx) => (
+          <button key={idx} className="flex flex-col items-center gap-2 group">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-b from-white/10 to-white/5 border border-white/10 flex items-center justify-center text-white/80 group-hover:text-white group-hover:border-white/30 group-hover:from-white/20 transition-all">
+              <item.icon size={22} />
+            </div>
+            <span className="text-[10px] uppercase tracking-wider font-bold text-white/60 group-hover:text-white/90">
+              {item.label}
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );

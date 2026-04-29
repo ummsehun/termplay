@@ -1,17 +1,16 @@
 import React from 'react';
 import { useTerminalSeriesStore } from '../stores/terminalSeriesStore';
-import { Play, Download, RefreshCw, Trash2, Loader2, FolderOpen } from 'lucide-react';
+import { CloudDownload, Loader2, Menu } from 'lucide-react';
 import { cn } from '../../../shared/lib/cn';
 
 export const SeriesActionBar: React.FC = () => {
-  const {
-    series,
-    selectedSeriesId,
-    isActionPending,
-    installSelectedSeries,
-    launchSelectedSeries,
+  const { 
+    series, 
+    selectedSeriesId, 
+    isActionPending, 
+    installSelectedSeries, 
+    launchSelectedSeries, 
     updateSelectedSeries,
-    removeSelectedSeries
   } = useTerminalSeriesStore();
 
   const currentSeries = series.find(s => s.id === selectedSeriesId);
@@ -26,23 +25,23 @@ export const SeriesActionBar: React.FC = () => {
         <button
           onClick={installSelectedSeries}
           disabled={isPending}
-          className="flex-1 max-w-xs flex items-center justify-center gap-3 bg-launcher-text text-launcher-bg hover:bg-launcher-primaryHover py-4 px-8 rounded-launcher font-bold text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-glow"
+          className="w-64 h-[72px] bg-launcher-cta hover:bg-launcher-cta-hover text-launcher-cta-text font-black text-2xl tracking-widest rounded-l-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(244,210,89,0.3)]"
         >
-          {isActionPending ? <Loader2 className="animate-spin" size={24} /> : <Download size={24} />}
-          Install
+          {isActionPending ? <Loader2 className="animate-spin" size={28} /> : null}
+          INSTALL
         </button>
       );
     }
-
+    
     if (status === 'installed' || status === 'update-available' || status === 'running') {
       return (
         <button
           onClick={launchSelectedSeries}
           disabled={isPending}
-          className="flex-1 max-w-xs flex items-center justify-center gap-3 bg-launcher-success text-white hover:bg-launcher-success/90 py-4 px-8 rounded-launcher font-bold text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-glow"
+          className="w-64 h-[72px] bg-launcher-cta hover:bg-launcher-cta-hover text-launcher-cta-text font-black text-2xl tracking-widest rounded-l-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(244,210,89,0.3)]"
         >
-          {status === 'running' ? <Loader2 className="animate-spin" size={24} /> : <Play fill="currentColor" size={24} />}
-          {status === 'running' ? 'Running...' : 'Launch'}
+          {status === 'running' ? <Loader2 className="animate-spin" size={28} /> : null}
+          {status === 'running' ? 'RUNNING' : 'PLAY'}
         </button>
       );
     }
@@ -51,10 +50,10 @@ export const SeriesActionBar: React.FC = () => {
       return (
         <button
           disabled
-          className="flex-1 max-w-xs flex items-center justify-center gap-3 bg-launcher-surfaceElevated text-launcher-textMuted py-4 px-8 rounded-launcher font-bold text-lg border border-launcher-border"
+          className="w-64 h-[72px] bg-white/10 backdrop-blur text-white font-black text-xl tracking-widest rounded-l-xl flex items-center justify-center gap-3 border border-white/20"
         >
           <Loader2 className="animate-spin" size={24} />
-          {status === 'installing' ? 'Installing...' : 'Updating...'}
+          {status === 'installing' ? 'INSTALLING' : 'UPDATING'}
         </button>
       );
     }
@@ -64,38 +63,48 @@ export const SeriesActionBar: React.FC = () => {
 
   return (
     <div className="flex items-center gap-4">
-      {renderPrimaryAction()}
-
-      {status === 'update-available' && (
-        <button
-          onClick={updateSelectedSeries}
-          disabled={isPending}
-          className="flex items-center gap-2 bg-launcher-warning/20 text-launcher-warning hover:bg-launcher-warning/30 px-6 py-4 rounded-launcher font-semibold transition-colors disabled:opacity-50"
-        >
-          <RefreshCw size={20} className={cn(currentSeries.status === 'updating' && "animate-spin")} />
-          Update to {currentSeries.latestVersion}
-        </button>
-      )}
-
-      {(status === 'installed' || status === 'update-available') && (
-        <div className="flex items-center gap-2 ml-auto">
-          <button
-            disabled={true} // Mock feature
-            className="p-4 rounded-launcher bg-launcher-surface border border-launcher-border text-launcher-textMuted hover:text-launcher-text hover:bg-launcher-surfaceElevated transition-colors disabled:opacity-50"
-            title="Open Install Folder"
-          >
-            <FolderOpen size={20} />
-          </button>
-          <button
-            onClick={removeSelectedSeries}
-            disabled={isPending}
-            className="p-4 rounded-launcher bg-launcher-surface border border-launcher-border text-launcher-textMuted hover:text-launcher-danger hover:border-launcher-danger/50 hover:bg-launcher-danger/10 transition-colors disabled:opacity-50"
-            title="Remove"
-          >
-            <Trash2 size={20} />
-          </button>
+      
+      {/* Download Status Info (Mock) */}
+      {(status === 'update-available' || status === 'installing' || status === 'updating') && (
+        <div className="flex items-center gap-4 bg-black/60 backdrop-blur-xl border border-white/10 rounded-full px-6 py-2">
+          <div className="relative w-10 h-10 flex items-center justify-center">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+              <path
+                className="text-white/20"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+              />
+              <path
+                className="text-launcher-accent transition-all duration-1000"
+                strokeDasharray={status === 'updating' || status === 'installing' ? "45, 100" : "100, 100"}
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+              />
+            </svg>
+            <CloudDownload className="absolute text-white" size={16} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-white font-bold text-sm">
+              {status === 'update-available' ? 'Update Available' : '8.15 Mb/s'}
+            </span>
+            <span className="text-white/50 text-xs font-mono">11.48 GB</span>
+          </div>
         </div>
       )}
+
+      {/* Main Action Group */}
+      <div className="flex items-center">
+        {renderPrimaryAction()}
+        
+        {/* Dropdown Menu Toggle (Mock) */}
+        <button className="h-[72px] w-14 bg-launcher-cta/90 hover:bg-launcher-cta text-launcher-cta-text flex items-center justify-center rounded-r-xl border-l border-black/20">
+          <Menu size={24} strokeWidth={3} />
+        </button>
+      </div>
     </div>
   );
 };
