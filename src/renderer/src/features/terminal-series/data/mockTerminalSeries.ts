@@ -1,0 +1,80 @@
+import { TerminalSeries } from '../types/terminalSeriesTypes';
+
+export const mockTerminalSeries: TerminalSeries[] = [
+  {
+    id: 'gascii',
+    name: 'gascii',
+    displayName: 'Gascii',
+    description: 'Terminal-based ASCII visual converter. Convert images and videos into high-quality ASCII art right in your terminal.',
+    repositoryUrl: 'https://github.com/example/gascii',
+    status: 'update-available',
+    installedVersion: 'v0.3.2',
+    latestVersion: 'v0.4.0',
+    installPath: 'C:\\Program Files\\Lanchaer\\Gascii',
+    runtimeRequirements: ['Rust (Cargo)', 'OpenCV'],
+    assets: [
+      {
+        id: 'gascii-core',
+        name: 'Core Binary',
+        description: 'Main executable for Gascii',
+        required: true,
+        status: 'installed',
+        sizeLabel: '15 MB',
+      },
+      {
+        id: 'gascii-opencv',
+        name: 'OpenCV Bindings',
+        description: 'Required for advanced video processing',
+        required: true,
+        status: 'outdated',
+        sizeLabel: '45 MB',
+      },
+      {
+        id: 'gascii-themes',
+        name: 'Premium Themes',
+        description: 'Additional color mapping themes',
+        required: false,
+        status: 'not-installed',
+        sizeLabel: '2 MB',
+      },
+    ],
+    logs: [
+      { id: 'l1', level: 'info', message: 'Initialized Gascii v0.3.2', timestamp: new Date(Date.now() - 86400000).toISOString() },
+      { id: 'l2', level: 'success', message: 'Successfully built OpenCV bindings', timestamp: new Date(Date.now() - 86000000).toISOString() },
+      { id: 'l3', level: 'warning', message: 'New update available: v0.4.0', timestamp: new Date(Date.now() - 3600000).toISOString() },
+    ],
+  },
+  {
+    id: 'mienjine',
+    name: 'mienjine',
+    displayName: 'MiEnjine',
+    description: 'Advanced terminal-based engine or execution environment. Run full applications within terminal emulator constraints.',
+    repositoryUrl: 'https://github.com/example/mienjine',
+    status: 'not-installed',
+    installedVersion: null,
+    latestVersion: 'v1.2.0',
+    installPath: null,
+    runtimeRequirements: ['Rust (Cargo)'],
+    assets: [
+      {
+        id: 'mienjine-core',
+        name: 'Engine Core',
+        description: 'Main execution engine',
+        required: true,
+        status: 'not-installed',
+        sizeLabel: '28 MB',
+      },
+      {
+        id: 'mienjine-plugins',
+        name: 'Standard Plugins',
+        description: 'Default plugins for extended functionality',
+        required: false,
+        status: 'not-installed',
+        sizeLabel: '12 MB',
+      },
+    ],
+    logs: [
+      { id: 'l4', level: 'info', message: 'Discovered MiEnjine repository', timestamp: new Date(Date.now() - 172800000).toISOString() },
+    ],
+  },
+];
