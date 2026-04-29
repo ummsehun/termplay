@@ -18,6 +18,7 @@
     "required": "必須",
     "no_logs": "実行情報がありません。",
     "select_project": "サイドバーからプロジェクトを選択してください",
+    "init_failed": "初期化に失敗しました",
     "new_updates": "新しいアップデートがあります",
     "settings": {
       "title": "設定",
@@ -28,7 +29,64 @@
       "auto_update": "自動アップデート",
       "auto_update_desc": "アプリケーション起動時にアップデートを確認",
       "close": "閉じる",
-      "save": "保存"
+      "save": "保存",
+      "storage": "ストレージ",
+      "game_settings": "ゲーム設定",
+      "advanced": "詳細"
+    },
+    "feature_modal": {
+      "launcher": {
+        "title": "ランチャー設定",
+        "desc": "インストールパスと実行オプションを構成します。",
+        "install_path": "インストールパス",
+        "install_path_desc": "アプリケーションがインストールされるデフォルトのパスです。",
+        "browse": "参照",
+        "gascii": {
+          "hw_accel": "ハードウェアアクセラレーション",
+          "hw_accel_desc": "GPUを使用してビデオ変換を高速化します。",
+          "auto_clean": "一時ファイルの自動削除",
+          "auto_clean_desc": "終了時にキャッシュと一時ファイルをすべて削除します。"
+        },
+        "mienjine": {
+          "high_res": "高解像度レンダリング",
+          "high_res_desc": "4Kテクスチャとアンチエイリアシングを強制適用します。",
+          "physics": "物理エンジンの有効化",
+          "physics_desc": "髪や衣服の物理シミュレーションをオンにします。"
+        }
+      },
+      "library": {
+        "title": "ローカルライブラリ",
+        "desc": "ダウンロードされたアセットとプロジェクトファイルを管理します。",
+        "files": "ファイル",
+        "open_folder": "フォルダを開く"
+      },
+      "assets": {
+        "title": "アセットマネージャー",
+        "desc_gascii": "YouTubeのURLからメディアを抽出して保存します。",
+        "desc_mienjine": "デフォルトのモデル、モーション、BGMアセットをダウンロードします。",
+        "yt_placeholder": "YouTubeのURLを入力してください...",
+        "download_mp4": "MP4ビデオ",
+        "download_mp3": "MP3オーディオ",
+        "download": "ダウンロード",
+        "size": "サイズ",
+        "type": "タイプ"
+      },
+      "guide": {
+        "title": "ガイドとドキュメント",
+        "desc": "エンジンのコアメカニズムと使用方法について説明します。",
+        "gascii_title": "Gasciiとは何ですか？",
+        "gascii_desc": "Gasciiは、高性能なターミナルベースのメディア抽出および処理ユーティリティです。標準のビデオパイプラインを軽量なASCIIマトリックスディスプレイに変換し、ターミナル環境に直接表示します。",
+        "gascii_features": "主な機能",
+        "gascii_f1": "MP4/MP3取得のためのYouTube APIの直接統合",
+        "gascii_f2": "リアルタイムのハードウェアアクセラレーションによるビデオからASCIIへの変換",
+        "gascii_f3": "UIのオーバーヘッドなしのシームレスなオーディオとビジュアルの同期",
+        "mienjine_title": "MiEnjineとは何ですか？",
+        "mienjine_desc": "MiEnjineは、GLBおよびMMD（PMX/VMD）ファイルを極めて効率的にレンダリングするために設計された、ターミナルおよびWeb用の専用3Dレンダリングエンジンです。",
+        "mienjine_features": "主な機能",
+        "mienjine_f1": "PMXキャラクターモデルとVMDモーションファイルのネイティブサポート",
+        "mienjine_f2": "カメラとステージのアニメーションに同期した統合オーディオ再生",
+        "mienjine_f3": "最小限のリソースでの高度なライティングと物理演算"
+      }
     }
   }
 }

@@ -18,6 +18,7 @@
     "required": "필수",
     "no_logs": "실행 정보가 없습니다.",
     "select_project": "사이드바에서 프로젝트를 선택하세요",
+    "init_failed": "초기화 실패",
     "new_updates": "새로운 업데이트가 있습니다",
     "settings": {
       "title": "설정",
@@ -28,7 +29,64 @@
       "auto_update": "자동 업데이트",
       "auto_update_desc": "애플리케이션 시작 시 업데이트 확인",
       "close": "닫기",
-      "save": "저장"
+      "save": "저장",
+      "storage": "저장소",
+      "game_settings": "게임 설정",
+      "advanced": "고급"
+    },
+    "feature_modal": {
+      "launcher": {
+        "title": "런처 설정",
+        "desc": "설치 경로 및 실행 옵션을 구성합니다.",
+        "install_path": "설치 경로",
+        "install_path_desc": "애플리케이션이 설치될 기본 경로입니다.",
+        "browse": "찾아보기",
+        "gascii": {
+          "hw_accel": "하드웨어 가속",
+          "hw_accel_desc": "GPU를 사용하여 비디오 변환 속도를 높입니다.",
+          "auto_clean": "임시 파일 자동 삭제",
+          "auto_clean_desc": "종료 시 사용된 캐시와 임시 파일을 모두 제거합니다."
+        },
+        "mienjine": {
+          "high_res": "고해상도 렌더링",
+          "high_res_desc": "4K 텍스처 및 안티앨리어싱을 강제로 적용합니다.",
+          "physics": "물리 엔진 활성화",
+          "physics_desc": "머리카락 및 옷감 시뮬레이션을 켭니다."
+        }
+      },
+      "library": {
+        "title": "로컬 라이브러리",
+        "desc": "다운로드된 에셋과 프로젝트 파일을 관리합니다.",
+        "files": "개 파일",
+        "open_folder": "폴더 열기"
+      },
+      "assets": {
+        "title": "에셋 매니저",
+        "desc_gascii": "유튜브 URL에서 미디어를 추출하여 로컬에 저장합니다.",
+        "desc_mienjine": "기본 모델, 모션, 배경 음악 에셋을 다운로드합니다.",
+        "yt_placeholder": "유튜브 URL을 입력하세요...",
+        "download_mp4": "MP4 비디오",
+        "download_mp3": "MP3 오디오",
+        "download": "다운로드",
+        "size": "크기",
+        "type": "유형"
+      },
+      "guide": {
+        "title": "가이드 및 문서",
+        "desc": "엔진의 핵심 메커니즘과 사용법을 확인하세요.",
+        "gascii_title": "Gascii란 무엇인가요?",
+        "gascii_desc": "Gascii는 고성능 터미널 기반 미디어 추출 및 처리 유틸리티입니다. 표준 비디오 파이프라인을 가벼운 ASCII 매트릭스 디스플레이로 터미널 환경에 직접 변환합니다.",
+        "gascii_features": "핵심 기능",
+        "gascii_f1": "MP4/MP3 다운로드를 위한 YouTube API 직접 통합",
+        "gascii_f2": "실시간 하드웨어 가속 비디오-ASCII 변환",
+        "gascii_f3": "UI 오버헤드 없는 매끄러운 시청각 동기화",
+        "mienjine_title": "MiEnjine이란 무엇인가요?",
+        "mienjine_desc": "MiEnjine은 GLB 및 MMD (PMX/VMD) 파일을 극도의 효율성으로 렌더링하도록 설계된 터미널 및 웹용 특수 3D 렌더링 엔진입니다.",
+        "mienjine_features": "핵심 기능",
+        "mienjine_f1": "PMX 캐릭터 모델 및 VMD 모션 파일 네이티브 지원",
+        "mienjine_f2": "카메라 및 스테이지 애니메이션과 동기화된 통합 오디오 재생",
+        "mienjine_f3": "최소한의 리소스로 고급 조명 및 물리 연산 제공"
+      }
     }
   }
 }

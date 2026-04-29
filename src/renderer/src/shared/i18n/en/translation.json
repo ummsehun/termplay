@@ -18,6 +18,7 @@
     "required": "Required",
     "no_logs": "No execution info available.",
     "select_project": "Select a project from the sidebar",
+    "init_failed": "Initialization Failed",
     "new_updates": "New Updates Available",
     "settings": {
       "title": "Settings",
@@ -28,7 +29,64 @@
       "auto_update": "Auto Update",
       "auto_update_desc": "Check for updates on application launch",
       "close": "Close",
-      "save": "Save"
+      "save": "Save",
+      "storage": "Storage",
+      "game_settings": "Game Settings",
+      "advanced": "Advanced"
+    },
+    "feature_modal": {
+      "launcher": {
+        "title": "Launcher Settings",
+        "desc": "Configure installation path and execution options.",
+        "install_path": "Installation Path",
+        "install_path_desc": "Default path where the application will be installed.",
+        "browse": "Browse",
+        "gascii": {
+          "hw_accel": "Hardware Acceleration",
+          "hw_accel_desc": "Use GPU to accelerate video conversion.",
+          "auto_clean": "Auto-clean Temp Files",
+          "auto_clean_desc": "Remove all cache and temp files upon exit."
+        },
+        "mienjine": {
+          "high_res": "High-Res Rendering",
+          "high_res_desc": "Force 4K textures and anti-aliasing.",
+          "physics": "Enable Physics Engine",
+          "physics_desc": "Turn on hair and cloth physics simulations."
+        }
+      },
+      "library": {
+        "title": "Local Library",
+        "desc": "Manage downloaded assets and project files.",
+        "files": "files",
+        "open_folder": "Open Folder"
+      },
+      "assets": {
+        "title": "Asset Manager",
+        "desc_gascii": "Extract media from YouTube URLs to local storage.",
+        "desc_mienjine": "Download default models, motions, and BGM assets.",
+        "yt_placeholder": "Enter YouTube URL...",
+        "download_mp4": "MP4 Video",
+        "download_mp3": "MP3 Audio",
+        "download": "Download",
+        "size": "Size",
+        "type": "Type"
+      },
+      "guide": {
+        "title": "Guide & Documentation",
+        "desc": "Learn about the core mechanics and usage.",
+        "gascii_title": "What is Gascii?",
+        "gascii_desc": "Gascii is a high-performance terminal-based media extraction and processing utility. It converts standard video pipelines into lightweight ASCII matrix displays directly inside your terminal environment.",
+        "gascii_features": "Core Features",
+        "gascii_f1": "Direct YouTube API integration for MP4/MP3 retrieval",
+        "gascii_f2": "Real-time hardware-accelerated video-to-ascii conversion",
+        "gascii_f3": "Seamless audio-visual synchronization without UI overhead",
+        "mienjine_title": "What is MiEnjine?",
+        "mienjine_desc": "MiEnjine is a specialized 3D rendering engine built for the terminal and web, designed to render GLB and MMD (PMX/VMD) files with extreme efficiency.",
+        "mienjine_features": "Core Features",
+        "mienjine_f1": "Native support for PMX character models and VMD motion files",
+        "mienjine_f2": "Integrated audio playback synced with camera and stage animations",
+        "mienjine_f3": "Advanced lighting and physics calculation within a minimal footprint"
+      }
     }
   }
 }
