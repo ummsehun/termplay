@@ -4,11 +4,13 @@ import { AppShell } from '../../shared/components/AppShell';
 import { SeriesSidebar } from '../../features/terminal-series/components/SeriesSidebar';
 import { SeriesHero } from '../../features/terminal-series/components/SeriesHero';
 import { SeriesActionBar } from '../../features/terminal-series/components/SeriesActionBar';
+import { useUIStore } from '../../shared/stores/uiStore';
 import { Loader2, Home, Globe, Link, Share2, Video, MessageSquare, Settings as SettingsIcon, Minus, X, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export const LauncherPage: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const { openSettings } = useUIStore();
   const { initialize, isInitializing, error, series, selectedSeriesId } = useTerminalSeriesStore();
   const currentSeries = series.find(s => s.id === selectedSeriesId);
 
@@ -64,27 +66,6 @@ export const LauncherPage: React.FC = () => {
       >
         {/* Mock character / abstract art placeholder */}
         <div className="absolute right-0 bottom-0 w-2/3 h-[90%] bg-gradient-to-t from-black/80 to-transparent z-0 pointer-events-none" />
-      </div>
-
-      {/* Top Window Controls (Mock) */}
-      <div className="absolute top-0 right-0 left-0 h-10 flex justify-end items-center px-4 z-50 pointer-events-none">
-        <div className="flex items-center gap-4 pointer-events-auto">
-          {/* Temporary language switcher for testing */}
-          <select 
-            className="bg-black/50 text-white text-xs px-2 py-1 rounded border border-white/20 outline-none"
-            value={i18n.language}
-            onChange={(e) => i18n.changeLanguage(e.target.value)}
-          >
-            <option value="ko">한국어</option>
-            <option value="en">English</option>
-            <option value="ja">日本語</option>
-          </select>
-          <button className="text-white/50 hover:text-white transition-colors"><SettingsIcon size={16} /></button>
-          <div className="w-px h-4 bg-white/20 mx-2" />
-          <button className="text-white/50 hover:text-white transition-colors"><Minus size={16} /></button>
-          <button className="text-white/50 hover:text-white transition-colors"><Square size={14} /></button>
-          <button className="text-white/50 hover:text-launcher-danger transition-colors"><X size={18} /></button>
-        </div>
       </div>
 
       {/* Floating Right Social Toolbar */}

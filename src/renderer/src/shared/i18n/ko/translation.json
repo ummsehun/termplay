@@ -4,10 +4,10 @@
     "events": "이벤트",
     "notices": "공지사항",
     "info": "정보",
-    "toolbox": "도구상자",
-    "check_in": "출석체크",
-    "assets": "에셋",
-    "wiki": "위키",
+    "launcher_action": "런처",
+    "library_action": "라이브러리",
+    "assets_action": "에셋",
+    "guide_action": "가이드",
     "install": "설치",
     "play": "시작",
     "running": "실행 중",
@@ -18,7 +18,17 @@
     "required": "필수",
     "no_logs": "실행 정보가 없습니다.",
     "select_project": "사이드바에서 프로젝트를 선택하세요",
-    "init_failed": "초기화 실패",
-    "new_updates": "새로운 업데이트가 있습니다"
+    "new_updates": "새로운 업데이트가 있습니다",
+    "settings": {
+      "title": "설정",
+      "general": "일반",
+      "language": "언어",
+      "install_path": "기본 설치 경로",
+      "browse": "찾아보기",
+      "auto_update": "자동 업데이트",
+      "auto_update_desc": "애플리케이션 시작 시 업데이트 확인",
+      "close": "닫기",
+      "save": "저장"
+    }
   }
 }

@@ -4,10 +4,10 @@
     "events": "イベント",
     "notices": "お知らせ",
     "info": "情報",
-    "toolbox": "ツールボックス",
-    "check_in": "ログインボーナス",
-    "assets": "アセット",
-    "wiki": "Wiki",
+    "launcher_action": "ランチャー",
+    "library_action": "ライブラリ",
+    "assets_action": "アセット",
+    "guide_action": "ガイド",
     "install": "インストール",
     "play": "プレイ",
     "running": "起動中",
@@ -18,7 +18,17 @@
     "required": "必須",
     "no_logs": "実行情報がありません。",
     "select_project": "サイドバーからプロジェクトを選択してください",
-    "init_failed": "初期化に失敗しました",
-    "new_updates": "新しいアップデートがあります"
+    "new_updates": "新しいアップデートがあります",
+    "settings": {
+      "title": "設定",
+      "general": "一般",
+      "language": "言語",
+      "install_path": "デフォルトインストール先",
+      "browse": "参照",
+      "auto_update": "自動アップデート",
+      "auto_update_desc": "アプリケーション起動時にアップデートを確認",
+      "close": "閉じる",
+      "save": "保存"
+    }
   }
 }

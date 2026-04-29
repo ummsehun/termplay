@@ -4,10 +4,10 @@
     "events": "Events",
     "notices": "Notices",
     "info": "Info",
-    "toolbox": "Toolbox",
-    "check_in": "Check-In",
-    "assets": "Assets",
-    "wiki": "Wiki",
+    "launcher_action": "Launcher",
+    "library_action": "Library",
+    "assets_action": "Assets",
+    "guide_action": "Guide",
     "install": "INSTALL",
     "play": "PLAY",
     "running": "RUNNING",
@@ -18,7 +18,17 @@
     "required": "Required",
     "no_logs": "No execution info available.",
     "select_project": "Select a project from the sidebar",
-    "init_failed": "Initialization Failed",
-    "new_updates": "New Updates Available"
+    "new_updates": "New Updates Available",
+    "settings": {
+      "title": "Settings",
+      "general": "General",
+      "language": "Language",
+      "install_path": "Default Install Path",
+      "browse": "Browse",
+      "auto_update": "Auto Update",
+      "auto_update_desc": "Check for updates on application launch",
+      "close": "Close",
+      "save": "Save"
+    }
   }
 }

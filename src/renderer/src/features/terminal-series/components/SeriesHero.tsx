@@ -5,11 +5,13 @@ import { TerminalSeriesTab } from '../types/terminalSeriesTypes';
 import { SeriesMetadata } from './SeriesMetadata';
 import { SeriesAssetsPanel } from './SeriesAssetsPanel';
 import { SeriesLogsPanel } from './SeriesLogsPanel';
-import { Package, Wrench, Calendar, BookOpen } from 'lucide-react';
+import { Package, BookOpen, Rocket, Library } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useUIStore, ModalType } from '../../../shared/stores/uiStore';
 
 export const SeriesHero: React.FC = () => {
   const { t } = useTranslation();
+  const { openModal } = useUIStore();
   const { series, selectedSeriesId, selectedTab, setSelectedTab } = useTerminalSeriesStore();
   const currentSeries = series.find(s => s.id === selectedSeriesId);
 
@@ -79,12 +81,16 @@ export const SeriesHero: React.FC = () => {
       {/* Quick Action Icons Panel */}
       <div className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex justify-between items-center pointer-events-auto shadow-2xl">
         {[
-          { icon: Wrench, label: t('launcher.toolbox') },
-          { icon: Calendar, label: t('launcher.check_in') },
-          { icon: Package, label: t('launcher.assets') },
-          { icon: BookOpen, label: t('launcher.wiki') }
+          { id: 'launcher', icon: Rocket, label: t('launcher.launcher_action') },
+          { id: 'library', icon: Library, label: t('launcher.library_action') },
+          { id: 'assets', icon: Package, label: t('launcher.assets_action') },
+          { id: 'guide', icon: BookOpen, label: t('launcher.guide_action') }
         ].map((item, idx) => (
-          <button key={idx} className="flex flex-col items-center gap-2 group">
+          <button 
+            key={idx} 
+            onClick={() => openModal(item.id as ModalType)}
+            className="flex flex-col items-center gap-2 group"
+          >
             <div className="w-12 h-12 rounded-xl bg-gradient-to-b from-white/10 to-white/5 border border-white/10 flex items-center justify-center text-white/80 group-hover:text-white group-hover:border-white/30 group-hover:from-white/20 transition-all">
               <item.icon size={22} />
             </div>

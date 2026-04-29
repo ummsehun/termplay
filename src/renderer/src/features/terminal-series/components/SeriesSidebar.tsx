@@ -1,10 +1,11 @@
-import React from 'react';
 import { useTerminalSeriesStore } from '../stores/terminalSeriesStore';
+import { useUIStore } from '../../../shared/stores/uiStore';
 import { cn } from '../../../shared/lib/cn';
 import { Terminal, Settings, User } from 'lucide-react';
 
 export const SeriesSidebar: React.FC = () => {
   const { series, selectedSeriesId, selectSeries } = useTerminalSeriesStore();
+  const { openSettings } = useUIStore();
 
   return (
     <div className="flex flex-col h-full items-center py-6">
@@ -57,7 +58,7 @@ export const SeriesSidebar: React.FC = () => {
         <button className="w-10 h-10 rounded-full bg-launcher-surface/50 flex items-center justify-center text-launcher-textMuted hover:text-white hover:bg-launcher-surface transition-colors">
           <User size={20} />
         </button>
-        <button className="w-10 h-10 flex items-center justify-center text-launcher-textMuted hover:text-white transition-colors pb-2">
+        <button onClick={openSettings} className="w-10 h-10 flex items-center justify-center text-launcher-textMuted hover:text-white transition-colors pb-2">
           <Settings size={20} />
         </button>
       </div>
