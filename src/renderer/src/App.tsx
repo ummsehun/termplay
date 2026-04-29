@@ -1,5 +1,5 @@
 import { LauncherPage } from './pages/launcher/LauncherPage';
-import { FeatureModal } from './shared/components/FeatureModal';
+import { FeatureModal } from './features/launcher/components/FeatureModal';
 import './shared/styles/globals.css';
 import './shared/i18n/config';
 
