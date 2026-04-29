@@ -15,14 +15,21 @@ contextBridge.exposeInMainWorld('launcher', {
     },
   },
   settings: {
+    get: () => ipcRenderer.invoke(IPC_CHANNELS.launcher.getSettings),
     selectInstallPath: () => ipcRenderer.invoke(IPC_CHANNELS.launcher.selectInstallPath),
+    setInstallPath: (seriesId: TerminalSeriesId, path: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.launcher.setInstallPath, { seriesId, path }),
+    setGlobalOption: (key: string, value: any) =>
+      ipcRenderer.invoke(IPC_CHANNELS.launcher.setGlobalOption, { key, value }),
     setSeriesOption: (seriesId: TerminalSeriesId, key: LauncherSettingKey, value: boolean) => 
       ipcRenderer.invoke(IPC_CHANNELS.launcher.setSeriesOption, { seriesId, key, value }),
   },
   library: {
+    getDirSummary: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.launcher.getDirSummary, { seriesId }),
     openDir: (seriesId: string, dir: string) => ipcRenderer.invoke(IPC_CHANNELS.launcher.openLibraryDir, { seriesId, dir }),
   },
   assets: {
+    list: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.launcher.getAssetList, { seriesId }),
     download: (assetId: string) => ipcRenderer.invoke(IPC_CHANNELS.launcher.downloadAsset, { assetId }),
     onProgress: (callback: (event: unknown) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => callback(payload);

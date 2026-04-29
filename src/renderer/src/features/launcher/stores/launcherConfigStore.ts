@@ -41,15 +41,48 @@ const initialState = {
   }
 };
 
-export const useLauncherConfigStore = create<LauncherConfigState>((set, get) => ({
+export const useLauncherConfigStore = create<LauncherConfigState & { load: () => Promise<void> }>((set, get) => ({
   ...initialState,
   
+  load: async () => {
+    try {
+      const result = await window.launcher.settings.get();
+      if (result.ok) {
+        set((state) => ({
+          global: { ...state.global, ...result.data.global },
+          series: {
+            gascii: { ...state.series.gascii, ...(result.data.series.gascii || {}) },
+            mienjine: { ...state.series.mienjine, ...(result.data.series.mienjine || {}) }
+          }
+        }));
+      }
+    } catch (e) {
+      console.error('Failed to load settings', e);
+    }
+  },
+
   setLanguage: async (language) => {
+    const previous = get().global.language;
     set((state) => ({ global: { ...state.global, language } }));
+    try {
+      const result = await window.launcher.settings.setGlobalOption('language', language);
+      if (!result.ok) throw new Error(result.error);
+    } catch (e) {
+      console.error('Failed to set language', e);
+      set((state) => ({ global: { ...state.global, language: previous } }));
+    }
   },
   
   setAutoUpdate: async (autoUpdate) => {
+    const previous = get().global.autoUpdate;
     set((state) => ({ global: { ...state.global, autoUpdate } }));
+    try {
+      const result = await window.launcher.settings.setGlobalOption('autoUpdate', autoUpdate);
+      if (!result.ok) throw new Error(result.error);
+    } catch (e) {
+      console.error('Failed to set autoUpdate', e);
+      set((state) => ({ global: { ...state.global, autoUpdate: previous } }));
+    }
   },
 
   setSeriesOption: async (seriesId, key, value) => {
@@ -92,6 +125,7 @@ export const useLauncherConfigStore = create<LauncherConfigState>((set, get) => 
   },
 
   setInstallPath: async (seriesId, path) => {
+    const previous = get().series[seriesId]?.installPath;
     set((state) => ({
       series: {
         ...state.series,
@@ -101,5 +135,20 @@ export const useLauncherConfigStore = create<LauncherConfigState>((set, get) => 
         }
       }
     }));
+    try {
+      const result = await window.launcher.settings.setInstallPath(seriesId, path);
+      if (!result.ok) throw new Error(result.error);
+    } catch (e) {
+      console.error('Failed to set installPath', e);
+      set((state) => ({
+        series: {
+          ...state.series,
+          [seriesId]: {
+            ...state.series[seriesId],
+            installPath: previous || ''
+          }
+        }
+      }));
+    }
   }
 }));

@@ -1,14 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Download, Box } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTerminalSeriesStore } from '../../terminal-series/stores/terminalSeriesStore';
-import { getSeriesFeatureConfig } from '../../terminal-series/constants/seriesFeatureConfig';
+import { getSeriesFeatureConfig, TerminalSeriesId } from '../../terminal-series/constants/seriesFeatureConfig';
+import { AssetInfo } from '@shared/launcherTypes';
+
+const formatSize = (bytes: number) => {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${bytes} B`;
+};
 
 export const AssetsPanel: React.FC = () => {
   const { t } = useTranslation();
   const { selectedSeriesId } = useTerminalSeriesStore();
   const [ytUrl, setYtUrl] = useState('');
+  const [assets, setAssets] = useState<AssetInfo[]>([]);
   const config = getSeriesFeatureConfig(selectedSeriesId);
+
+  useEffect(() => {
+    if (selectedSeriesId && config?.assetMode === 'asset-list') {
+      window.launcher.assets.list(selectedSeriesId as TerminalSeriesId).then((res) => {
+        if (res.ok) {
+          setAssets(res.data);
+        }
+      });
+    }
+  }, [selectedSeriesId, config?.assetMode]);
 
   if (!selectedSeriesId || !config) {
     return (
@@ -19,6 +37,11 @@ export const AssetsPanel: React.FC = () => {
   }
 
   const isYoutubeMode = config.assetMode === 'youtube';
+
+  const handleDownloadAsset = async (assetId: string) => {
+    // Scaffold: Will hook up progress tracking later
+    await window.launcher.assets.download(assetId);
+  };
 
   return (
     <div className="flex flex-col h-full bg-[#111111]">
@@ -58,23 +81,21 @@ export const AssetsPanel: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {[
-              { name: 'Default Anime Stage.glb', type: 'Environment', size: '12.4 MB' },
-              { name: 'Standard Character Base.pmx', type: 'Model', size: '4.2 MB' },
-              { name: 'Sample Background Track.mp3', type: 'Music', size: '3.1 MB' },
-              { name: 'Dynamic Camera Pan.vmd', type: 'Animation', size: '150 KB' },
-            ].map((asset, idx) => (
-              <div key={idx} className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-[#1c1c1e] hover:bg-[#2c2c2e] transition-colors">
+            {assets.map((asset) => (
+              <div key={asset.id} className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-[#1c1c1e] hover:bg-[#2c2c2e] transition-colors">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-lg bg-[#111] flex items-center justify-center text-white/50">
                     <Box size={20} />
                   </div>
                   <div className="flex flex-col">
                     <h4 className="text-[15px] text-white font-bold">{asset.name}</h4>
-                    <span className="text-[13px] text-white/50 mt-0.5">{t('launcher.feature_modal.assets.type')}: {asset.type} • {t('launcher.feature_modal.assets.size')}: {asset.size}</span>
+                    <span className="text-[13px] text-white/50 mt-0.5">{t('launcher.feature_modal.assets.type')}: {asset.type} • {t('launcher.feature_modal.assets.size')}: {formatSize(asset.sizeBytes)}</span>
                   </div>
                 </div>
-                <button className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[13px] flex items-center gap-2 transition-colors">
+                <button 
+                  onClick={() => handleDownloadAsset(asset.id)}
+                  className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[13px] flex items-center gap-2 transition-colors"
+                >
                   <Download size={16} />
                   <span>{t('launcher.feature_modal.assets.download')}</span>
                 </button>

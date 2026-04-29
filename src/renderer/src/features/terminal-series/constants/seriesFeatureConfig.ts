@@ -1,4 +1,5 @@
-import { FileMusic, Video as VideoIcon, Box, FileVideo, ElementType } from 'lucide-react';
+import { FileMusic, Video as VideoIcon, Box, FileVideo } from 'lucide-react';
+import { ElementType } from 'react';
 
 export type TerminalSeriesId = 'gascii' | 'mienjine';
 export type AssetMode = 'youtube' | 'asset-list';
