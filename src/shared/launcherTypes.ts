@@ -40,6 +40,7 @@ export type DirSummary = {
   fileCount: number;
   sizeBytes: number;
   exists: boolean;
+  error?: string;
 };
 
 export type GetDirSummaryResponse = Result<DirSummary[]>;
@@ -52,3 +53,21 @@ export type AssetInfo = {
 };
 
 export type GetAssetListResponse = Result<AssetInfo[]>;
+
+export type DownloadStatus =
+  | 'queued'
+  | 'downloading'
+  | 'verifying'
+  | 'completed'
+  | 'failed'
+  | 'canceled';
+
+export type AssetDownloadProgress = {
+  downloadId: string;
+  assetId: string;
+  status: DownloadStatus;
+  progress: number;
+  downloadedBytes: number;
+  totalBytes?: number;
+  error?: string;
+};

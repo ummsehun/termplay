@@ -69,14 +69,23 @@ export class LauncherConfigRepository {
         }
       };
     } catch (error) {
-      logger.error('Failed to read config, returning default', error);
+      logger.error('Failed to parse config, renaming to corrupt file and returning default', error);
+      try {
+        const corruptPath = `${this.configPath}.corrupt.${Date.now()}.json`;
+        await fs.rename(this.configPath, corruptPath);
+        await this.saveConfig(DEFAULT_CONFIG);
+      } catch (e) {
+        logger.error('Failed to handle corrupt config file', e);
+      }
       return DEFAULT_CONFIG;
     }
   }
 
   async saveConfig(config: LauncherConfig): Promise<void> {
     try {
-      await fs.writeFile(this.configPath, JSON.stringify(config, null, 2), 'utf-8');
+      const tmpPath = `${this.configPath}.tmp`;
+      await fs.writeFile(tmpPath, JSON.stringify(config, null, 2), 'utf-8');
+      await fs.rename(tmpPath, this.configPath);
     } catch (error) {
       logger.error('Failed to save config', error);
       throw error;

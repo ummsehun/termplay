@@ -16,6 +16,7 @@ export const AssetsPanel: React.FC = () => {
   const { selectedSeriesId } = useTerminalSeriesStore();
   const [ytUrl, setYtUrl] = useState('');
   const [assets, setAssets] = useState<AssetInfo[]>([]);
+  const [downloads, setDownloads] = useState<Record<string, import('@shared/launcherTypes').AssetDownloadProgress>>({});
   const config = getSeriesFeatureConfig(selectedSeriesId);
 
   useEffect(() => {
@@ -28,6 +29,13 @@ export const AssetsPanel: React.FC = () => {
     }
   }, [selectedSeriesId, config?.assetMode]);
 
+  useEffect(() => {
+    const unsub = window.launcher.assets.onProgress((event) => {
+      setDownloads(prev => ({ ...prev, [event.assetId]: event }));
+    });
+    return unsub;
+  }, []);
+
   if (!selectedSeriesId || !config) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-[#111111] text-white/50">
@@ -39,8 +47,11 @@ export const AssetsPanel: React.FC = () => {
   const isYoutubeMode = config.assetMode === 'youtube';
 
   const handleDownloadAsset = async (assetId: string) => {
-    // Scaffold: Will hook up progress tracking later
     await window.launcher.assets.download(assetId);
+  };
+
+  const handleCancelDownload = async (downloadId: string) => {
+    await window.launcher.assets.cancel(downloadId);
   };
 
   return (
@@ -81,26 +92,57 @@ export const AssetsPanel: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {assets.map((asset) => (
-              <div key={asset.id} className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-[#1c1c1e] hover:bg-[#2c2c2e] transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#111] flex items-center justify-center text-white/50">
-                    <Box size={20} />
+            {assets.map((asset) => {
+              const dl = downloads[asset.id];
+              const isDownloading = dl && dl.status === 'downloading';
+              const isCompleted = dl && dl.status === 'completed';
+
+              return (
+                <div key={asset.id} className="flex flex-col gap-2 p-4 rounded-xl border border-white/5 bg-[#1c1c1e] hover:bg-[#2c2c2e] transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-[#111] flex items-center justify-center text-white/50">
+                        <Box size={20} />
+                      </div>
+                      <div className="flex flex-col">
+                        <h4 className="text-[15px] text-white font-bold">{asset.name}</h4>
+                        <span className="text-[13px] text-white/50 mt-0.5">{t('launcher.feature_modal.assets.type')}: {asset.type} • {t('launcher.feature_modal.assets.size')}: {formatSize(asset.sizeBytes)}</span>
+                      </div>
+                    </div>
+                    
+                    {isCompleted ? (
+                      <div className="px-5 py-2.5 rounded-lg bg-green-600/20 text-green-400 font-bold text-[13px] flex items-center gap-2">
+                        {t('launcher.feature_modal.assets.completed', 'Completed')}
+                      </div>
+                    ) : isDownloading ? (
+                      <button 
+                        onClick={() => handleCancelDownload(dl.downloadId)}
+                        className="px-5 py-2.5 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-400 font-bold text-[13px] flex items-center gap-2 transition-colors"
+                      >
+                        {t('launcher.feature_modal.assets.cancel', 'Cancel')}
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => handleDownloadAsset(asset.id)}
+                        className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[13px] flex items-center gap-2 transition-colors"
+                      >
+                        <Download size={16} />
+                        <span>{t('launcher.feature_modal.assets.download')}</span>
+                      </button>
+                    )}
                   </div>
-                  <div className="flex flex-col">
-                    <h4 className="text-[15px] text-white font-bold">{asset.name}</h4>
-                    <span className="text-[13px] text-white/50 mt-0.5">{t('launcher.feature_modal.assets.type')}: {asset.type} • {t('launcher.feature_modal.assets.size')}: {formatSize(asset.sizeBytes)}</span>
-                  </div>
+                  
+                  {isDownloading && (
+                    <div className="w-full bg-[#111] h-1.5 rounded-full overflow-hidden mt-2">
+                      <div 
+                        className="bg-blue-500 h-full transition-all duration-300" 
+                        style={{ width: `${dl.progress}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
-                <button 
-                  onClick={() => handleDownloadAsset(asset.id)}
-                  className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[13px] flex items-center gap-2 transition-colors"
-                >
-                  <Download size={16} />
-                  <span>{t('launcher.feature_modal.assets.download')}</span>
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

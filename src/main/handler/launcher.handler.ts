@@ -90,8 +90,6 @@ export const registerLauncherHandlers = (): void => {
         return { ok: true, data: [] }; // No install path set yet
       }
 
-      // We should ideally read the SERIES_FEATURE_CONFIG to know which dirs to check.
-      // For scaffolding, we can just return mocked dirs based on seriesId, or read actual folders.
       const dirsToCheck: LibraryDirKey[] = payload.seriesId === 'gascii' 
         ? ['video', 'audio'] 
         : ['music', 'glb', 'camera', 'stage', 'vmd', 'pmx'];
@@ -103,6 +101,7 @@ export const registerLauncherHandlers = (): void => {
         let exists = false;
         let fileCount = 0;
         let sizeBytes = 0;
+        let error: string | undefined;
 
         try {
           const stats = await fs.stat(fullPath);
@@ -110,10 +109,11 @@ export const registerLauncherHandlers = (): void => {
             exists = true;
             const files = await fs.readdir(fullPath);
             fileCount = files.length;
-            // Simplified size calc: just count files for now, or stat each file
           }
-        } catch {
-          // directory does not exist
+        } catch (e: any) {
+          if (e.code !== 'ENOENT') {
+            error = e.message;
+          }
         }
 
         summaries.push({
@@ -121,6 +121,7 @@ export const registerLauncherHandlers = (): void => {
           exists,
           fileCount,
           sizeBytes,
+          error,
         });
       }
 
@@ -140,7 +141,11 @@ export const registerLauncherHandlers = (): void => {
 
       const fullPath = path.join(installPath, payload.dir);
       
-      // Ensure the directory exists before trying to open it
+      const relative = path.relative(installPath, fullPath);
+      if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        return { ok: false, error: 'Invalid directory path' };
+      }
+      
       try {
         await fs.access(fullPath);
       } catch {
@@ -178,8 +183,42 @@ export const registerLauncherHandlers = (): void => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.launcher.downloadAsset, async (_event, payload: { assetId: string }) => {
+  ipcMain.handle(IPC_CHANNELS.launcher.downloadAsset, async (event, payload: { assetId: string }) => {
     logger.info(`downloadAsset: ${payload.assetId}`);
-    // Scaffold: will initiate download logic and emit onDownloadProgress
+    
+    // Fake progress scaffold
+    const downloadId = `dl_${Date.now()}`;
+    let progress = 0;
+    
+    const interval = setInterval(() => {
+      progress += 10;
+      if (progress > 100) {
+        clearInterval(interval);
+        event.sender.send(IPC_CHANNELS.launcher.onDownloadProgress, {
+          downloadId,
+          assetId: payload.assetId,
+          status: 'completed',
+          progress: 100,
+          downloadedBytes: 1000,
+          totalBytes: 1000
+        });
+      } else {
+        event.sender.send(IPC_CHANNELS.launcher.onDownloadProgress, {
+          downloadId,
+          assetId: payload.assetId,
+          status: 'downloading',
+          progress,
+          downloadedBytes: progress * 10,
+          totalBytes: 1000
+        });
+      }
+    }, 500);
+
+    return { ok: true, data: { downloadId } };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.launcher.cancelDownload, async (_event, payload: { downloadId: string }) => {
+    logger.info(`cancelDownload: ${payload.downloadId}`);
+    return { ok: true, data: null };
   });
 };

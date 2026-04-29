@@ -31,8 +31,9 @@ contextBridge.exposeInMainWorld('launcher', {
   assets: {
     list: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.launcher.getAssetList, { seriesId }),
     download: (assetId: string) => ipcRenderer.invoke(IPC_CHANNELS.launcher.downloadAsset, { assetId }),
-    onProgress: (callback: (event: unknown) => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => callback(payload);
+    cancel: (downloadId: string) => ipcRenderer.invoke(IPC_CHANNELS.launcher.cancelDownload, { downloadId }),
+    onProgress: (callback: (event: any) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: any) => callback(payload);
       ipcRenderer.on(IPC_CHANNELS.launcher.onDownloadProgress, listener);
       return () => {
         ipcRenderer.off(IPC_CHANNELS.launcher.onDownloadProgress, listener);

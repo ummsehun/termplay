@@ -37,7 +37,8 @@ declare global {
       assets: {
         list: (seriesId: TerminalSeriesId) => Promise<import('@shared/launcherTypes').GetAssetListResponse>;
         download: (assetId: string) => Promise<void>;
-        onProgress: (callback: (event: unknown) => void) => () => void;
+        cancel: (downloadId: string) => Promise<void>;
+        onProgress: (callback: (event: import('@shared/launcherTypes').AssetDownloadProgress) => void) => () => void;
       };
     };
   }
