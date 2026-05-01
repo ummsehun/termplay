@@ -12,6 +12,7 @@ export const IPC_CHANNELS = {
     setGlobalOption: 'launcher:set-global-option',
     getAssetList: 'launcher:get-asset-list',
     downloadAsset: 'launcher:download-asset',
+    downloadYoutube: 'launcher:download-youtube',
     cancelDownload: 'launcher:cancel-download',
     onDownloadProgress: 'launcher:on-download-progress',
   }

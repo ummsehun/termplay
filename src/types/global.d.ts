@@ -36,7 +36,8 @@ declare global {
       };
       assets: {
         list: (seriesId: TerminalSeriesId) => Promise<import('@shared/launcherTypes').GetAssetListResponse>;
-        download: (assetId: string) => Promise<void>;
+        download: (seriesId: TerminalSeriesId, assetId: string) => Promise<void>;
+        downloadYoutube: (seriesId: TerminalSeriesId, url: string, format: 'mp4' | 'mp3') => Promise<import('@shared/launcherTypes').Result<{ downloadId: string }>>;
         cancel: (downloadId: string) => Promise<void>;
         onProgress: (callback: (event: import('@shared/launcherTypes').AssetDownloadProgress) => void) => () => void;
       };

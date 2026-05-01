@@ -50,6 +50,11 @@ export type AssetInfo = {
   name: string;
   type: string;
   sizeBytes: number;
+  fileName: string;
+  targetDir: LibraryDirKey;
+  description?: string;
+  checksum?: string;
+  downloadUrl?: string;
 };
 
 export type GetAssetListResponse = Result<AssetInfo[]>;
@@ -70,4 +75,10 @@ export type AssetDownloadProgress = {
   downloadedBytes: number;
   totalBytes?: number;
   error?: string;
+};
+
+export type DownloadYoutubeRequest = {
+  seriesId: TerminalSeriesId;
+  url: string;
+  format: 'mp4' | 'mp3';
 };

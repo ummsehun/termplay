@@ -47,11 +47,16 @@ export const AssetsPanel: React.FC = () => {
   const isYoutubeMode = config.assetMode === 'youtube';
 
   const handleDownloadAsset = async (assetId: string) => {
-    await window.launcher.assets.download(assetId);
+    await window.launcher.assets.download(selectedSeriesId as TerminalSeriesId, assetId);
   };
 
   const handleCancelDownload = async (downloadId: string) => {
     await window.launcher.assets.cancel(downloadId);
+  };
+
+  const handleDownloadYoutube = async (format: 'mp4' | 'mp3') => {
+    if (!ytUrl) return;
+    await window.launcher.assets.downloadYoutube(selectedSeriesId as TerminalSeriesId, ytUrl, format);
   };
 
   return (
@@ -81,14 +86,52 @@ export const AssetsPanel: React.FC = () => {
               />
             </div>
             
-            <div className="flex gap-4 w-full">
-              <button className="flex-1 py-4 bg-[#2c2c2e] hover:bg-[#3c3c3e] text-white rounded-xl transition-colors flex items-center justify-center gap-2 text-[14px] font-bold">
-                <Download size={18} /> {t('launcher.feature_modal.assets.download_mp4')}
-              </button>
-              <button className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-colors flex items-center justify-center gap-2 text-[14px] font-bold">
-                <Download size={18} /> {t('launcher.feature_modal.assets.download_mp3')}
-              </button>
-            </div>
+            {downloads[ytUrl] && downloads[ytUrl].status === 'downloading' ? (
+              <div className="w-full bg-[#1c1c1e] p-5 rounded-xl border border-white/5 flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-white text-sm font-bold">{t('launcher.feature_modal.assets.downloading', 'Downloading...')}</span>
+                  <button 
+                    onClick={() => handleCancelDownload(downloads[ytUrl].downloadId)}
+                    className="text-red-400 text-sm font-bold hover:text-red-300"
+                  >
+                    {t('launcher.feature_modal.assets.cancel', 'Cancel')}
+                  </button>
+                </div>
+                <div className="w-full bg-[#111] h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-blue-500 h-full transition-all duration-300" 
+                    style={{ width: `${downloads[ytUrl].progress}%` }}
+                  />
+                </div>
+              </div>
+            ) : downloads[ytUrl] && downloads[ytUrl].status === 'completed' ? (
+              <div className="w-full bg-green-600/20 p-5 rounded-xl border border-green-500/20 flex flex-col items-center justify-center">
+                <span className="text-green-400 font-bold">{t('launcher.feature_modal.assets.completed', 'Completed')}</span>
+                <button 
+                  onClick={() => setDownloads(prev => { const next = {...prev}; delete next[ytUrl]; return next; })}
+                  className="mt-2 text-white/50 text-sm hover:text-white"
+                >
+                  {t('launcher.feature_modal.assets.download_another', 'Download another')}
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-4 w-full">
+                <button 
+                  onClick={() => handleDownloadYoutube('mp4')}
+                  disabled={!ytUrl}
+                  className="flex-1 py-4 bg-[#2c2c2e] hover:bg-[#3c3c3e] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-colors flex items-center justify-center gap-2 text-[14px] font-bold"
+                >
+                  <Download size={18} /> {t('launcher.feature_modal.assets.download_mp4')}
+                </button>
+                <button 
+                  onClick={() => handleDownloadYoutube('mp3')}
+                  disabled={!ytUrl}
+                  className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-colors flex items-center justify-center gap-2 text-[14px] font-bold"
+                >
+                  <Download size={18} /> {t('launcher.feature_modal.assets.download_mp3')}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-3">

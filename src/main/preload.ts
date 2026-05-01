@@ -30,7 +30,8 @@ contextBridge.exposeInMainWorld('launcher', {
   },
   assets: {
     list: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.launcher.getAssetList, { seriesId }),
-    download: (assetId: string) => ipcRenderer.invoke(IPC_CHANNELS.launcher.downloadAsset, { assetId }),
+    download: (seriesId: TerminalSeriesId, assetId: string) => ipcRenderer.invoke(IPC_CHANNELS.launcher.downloadAsset, { seriesId, assetId }),
+    downloadYoutube: (seriesId: TerminalSeriesId, url: string, format: 'mp4' | 'mp3') => ipcRenderer.invoke(IPC_CHANNELS.launcher.downloadYoutube, { seriesId, url, format }),
     cancel: (downloadId: string) => ipcRenderer.invoke(IPC_CHANNELS.launcher.cancelDownload, { downloadId }),
     onProgress: (callback: (event: any) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, payload: any) => callback(payload);
