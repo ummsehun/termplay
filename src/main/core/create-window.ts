@@ -10,7 +10,7 @@ export const createMainWindow = (): BrowserWindow => {
     height: 720,
     minWidth: 900,
     minHeight: 620,
-    title: 'Launcher',
+    title: 'TermPlay',
     backgroundColor: '#09090b',
     webPreferences: {
       preload: join(currentDirectory, '../preload/preload.js'),

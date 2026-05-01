@@ -13,6 +13,7 @@ export const SeriesActionBar: React.FC = () => {
     installSelectedSeries, 
     launchSelectedSeries, 
     updateSelectedSeries,
+    actionProgressBySeries,
   } = useTerminalSeriesStore();
 
   const currentSeries = series.find(s => s.id === selectedSeriesId);
@@ -20,6 +21,7 @@ export const SeriesActionBar: React.FC = () => {
 
   const status = currentSeries.status;
   const isPending = isActionPending || status === 'installing' || status === 'updating' || status === 'running';
+  const actionProgress = actionProgressBySeries[currentSeries.id] ?? 0;
 
   const renderPrimaryAction = () => {
     if (status === 'not-installed') {
@@ -80,7 +82,7 @@ export const SeriesActionBar: React.FC = () => {
               />
               <path
                 className="text-launcher-accent transition-all duration-1000"
-                strokeDasharray={status === 'updating' || status === 'installing' ? "45, 100" : "100, 100"}
+                strokeDasharray={status === 'updating' || status === 'installing' ? `${Math.max(actionProgress, 8)}, 100` : "100, 100"}
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 fill="none"
                 stroke="currentColor"
@@ -93,7 +95,9 @@ export const SeriesActionBar: React.FC = () => {
             <span className="text-white font-bold text-sm">
               {status === 'update-available' ? t('launcher.update_available') : '8.15 Mb/s'}
             </span>
-            <span className="text-white/50 text-xs font-mono">11.48 GB</span>
+            <span className="text-white/50 text-xs font-mono">
+              {status === 'installing' || status === 'updating' ? `${actionProgress}%` : '11.48 GB'}
+            </span>
           </div>
         </div>
       )}

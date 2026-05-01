@@ -2,7 +2,10 @@ import { app, BrowserWindow, dialog } from 'electron';
 import { createMainWindow } from './core/create-window';
 import { registerGameHandlers } from './handler/game.handler';
 import { registerLauncherHandlers } from './handler/launcher.handler';
+import { registerSeriesHandlers } from './handler/series.handler';
 import { toErrorMessage } from './utils/error';
+
+app.setName('TermPlay');
 
 const showFatalError = (title: string, error: unknown): void => {
   const message = toErrorMessage(error);
@@ -28,6 +31,7 @@ process.on('unhandledRejection', (reason) => {
 try {
   registerGameHandlers();
   registerLauncherHandlers();
+  registerSeriesHandlers();
 } catch (error) {
   showFatalError('IPC 핸들러 등록 실패', error);
   app.quit();

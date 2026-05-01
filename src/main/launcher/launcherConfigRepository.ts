@@ -1,8 +1,8 @@
 import { app } from 'electron';
-import fs from 'fs/promises';
 import path from 'path';
+import ElectronStore from 'electron-store';
 import { createLogger } from '@shared/logger';
-import { LauncherConfig, TerminalSeriesId, LauncherSettingKey } from '@shared/launcherTypes';
+import { GasciiInstallInfo, LauncherConfig, SeriesRuntimeState } from '@shared/launcherTypes';
 
 const logger = createLogger('launcher-config-repo');
 
@@ -30,26 +30,49 @@ const DEFAULT_CONFIG: LauncherConfig = {
   }
 };
 
+type TermPlayStoreSchema = {
+  config: LauncherConfig;
+  runtime: SeriesRuntimeState;
+};
+
 export class LauncherConfigRepository {
-  private get configPath(): string {
-    return path.join(app.getPath('userData'), 'launcher-config.json');
+  private store: ElectronStore<TermPlayStoreSchema> | null = null;
+
+  private getStore(): ElectronStore<TermPlayStoreSchema> {
+    if (!this.store) {
+      this.store = new ElectronStore<TermPlayStoreSchema>({
+        name: 'termplay',
+        defaults: {
+          config: DEFAULT_CONFIG,
+          runtime: {},
+        },
+      });
+    }
+
+    return this.store;
+  }
+
+  getTermRoot(): string {
+    return path.join(app.getPath('userData'), 'Term');
   }
 
   async ensureDefaultConfig(): Promise<void> {
-    try {
-      await fs.access(this.configPath);
-    } catch {
-      logger.info('Config file not found, creating default config.');
-      await this.saveConfig(DEFAULT_CONFIG);
+    const store = this.getStore();
+
+    if (!store.has('config')) {
+      logger.info('Config not found, creating default config.');
+      store.set('config', DEFAULT_CONFIG);
+    }
+
+    if (!store.has('runtime')) {
+      store.set('runtime', {});
     }
   }
 
   async getConfig(): Promise<LauncherConfig> {
     await this.ensureDefaultConfig();
     try {
-      const data = await fs.readFile(this.configPath, 'utf-8');
-      const config = JSON.parse(data) as LauncherConfig;
-      // Basic validation/migration could be added here
+      const config = this.getStore().get('config', DEFAULT_CONFIG);
       return {
         ...DEFAULT_CONFIG,
         ...config,
@@ -69,27 +92,28 @@ export class LauncherConfigRepository {
         }
       };
     } catch (error) {
-      logger.error('Failed to parse config, renaming to corrupt file and returning default', error);
-      try {
-        const corruptPath = `${this.configPath}.corrupt.${Date.now()}.json`;
-        await fs.rename(this.configPath, corruptPath);
-        await this.saveConfig(DEFAULT_CONFIG);
-      } catch (e) {
-        logger.error('Failed to handle corrupt config file', e);
-      }
+      logger.error('Failed to read config, returning default', error);
       return DEFAULT_CONFIG;
     }
   }
 
   async saveConfig(config: LauncherConfig): Promise<void> {
     try {
-      const tmpPath = `${this.configPath}.tmp`;
-      await fs.writeFile(tmpPath, JSON.stringify(config, null, 2), 'utf-8');
-      await fs.rename(tmpPath, this.configPath);
+      this.getStore().set('config', config);
     } catch (error) {
       logger.error('Failed to save config', error);
       throw error;
     }
+  }
+
+  async getGasciiInstallInfo(): Promise<GasciiInstallInfo | null> {
+    await this.ensureDefaultConfig();
+    return this.getStore().get('runtime.gascii') ?? null;
+  }
+
+  async setGasciiInstallInfo(info: GasciiInstallInfo): Promise<void> {
+    await this.ensureDefaultConfig();
+    this.getStore().set('runtime.gascii', info);
   }
 }
 

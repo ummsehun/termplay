@@ -9,13 +9,13 @@ type TerminalSeriesState = {
   isActionPending: boolean;
   isInitializing: boolean;
   error: string | null;
+  actionProgressBySeries: Record<string, number>;
 
   // Actions
   initialize: () => Promise<void>;
   selectSeries: (id: string) => void;
   setSelectedTab: (tab: TerminalSeriesTab) => void;
   
-  // Mock API Interactions
   installSelectedSeries: () => Promise<void>;
   launchSelectedSeries: () => Promise<void>;
   updateSelectedSeries: () => Promise<void>;
@@ -33,6 +33,7 @@ export const useTerminalSeriesStore = create<TerminalSeriesState>((set, get) => 
   isActionPending: false,
   isInitializing: true,
   error: null,
+  actionProgressBySeries: {},
 
   initialize: async () => {
     try {
@@ -43,6 +44,20 @@ export const useTerminalSeriesStore = create<TerminalSeriesState>((set, get) => 
         selectedSeriesId: seriesList.length > 0 ? seriesList[0].id : null,
         isInitializing: false 
       });
+
+      try {
+        const statusResult = await window.launcher.series.getStatus('gascii');
+        if (statusResult.ok) {
+          get().updateSeriesInStore('gascii', {
+            status: statusResult.data.status,
+            installedVersion: statusResult.data.installedVersion,
+            latestVersion: statusResult.data.latestVersion ?? seriesList.find(s => s.id === 'gascii')?.latestVersion ?? 'unknown',
+            installPath: statusResult.data.installPath,
+          });
+        }
+      } catch {
+        // 초기 목록 렌더링은 Gascii 상태 조회 실패와 분리한다.
+      }
     } catch (err: any) {
       set({ error: err.message || 'Failed to load series', isInitializing: false });
     }
@@ -75,6 +90,38 @@ export const useTerminalSeriesStore = create<TerminalSeriesState>((set, get) => 
       updateSeriesInStore(selectedSeriesId, { status: 'installing' });
       addLog(selectedSeriesId, { level: 'info', message: 'Starting installation process...' });
 
+      if (selectedSeriesId === 'gascii') {
+        let lastProgressLog = 0;
+        const unsubscribe = window.launcher.series.onInstallProgress((event) => {
+          if (event.seriesId !== 'gascii') return;
+          set((state) => ({
+            actionProgressBySeries: {
+              ...state.actionProgressBySeries,
+              gascii: event.progress,
+            },
+          }));
+          if (event.stage === 'downloading' && event.progress - lastProgressLog >= 15) {
+            lastProgressLog = event.progress;
+            addLog('gascii', { level: 'info', message: `${event.message} (${event.progress}%)` });
+          }
+        });
+
+        const result = await window.launcher.series.install('gascii').finally(unsubscribe);
+
+        if (!result.ok) {
+          throw new Error(result.error);
+        }
+
+        updateSeriesInStore(selectedSeriesId, {
+          status: 'installed',
+          installPath: result.data.installPath,
+          installedVersion: result.data.installedVersion,
+          assets: get().series.find(s => s.id === selectedSeriesId)?.assets.map(a => ({ ...a, status: 'installed' })) || []
+        });
+        addLog(selectedSeriesId, { level: 'success', message: `Installed Gascii ${result.data.installedVersion}.` });
+        return;
+      }
+
       await terminalSeriesApi.installSeries(selectedSeriesId);
 
       updateSeriesInStore(selectedSeriesId, { 
@@ -89,7 +136,7 @@ export const useTerminalSeriesStore = create<TerminalSeriesState>((set, get) => 
       addLog(selectedSeriesId, { level: 'error', message: `Installation failed: ${err.message}` });
       set({ error: err.message });
     } finally {
-      set({ isActionPending: false });
+      set((state) => ({ isActionPending: false, actionProgressBySeries: { ...state.actionProgressBySeries, [selectedSeriesId]: 0 } }));
     }
   },
 
@@ -105,6 +152,18 @@ export const useTerminalSeriesStore = create<TerminalSeriesState>((set, get) => 
       set({ isActionPending: true, error: null });
       updateSeriesInStore(selectedSeriesId, { status: 'running' });
       addLog(selectedSeriesId, { level: 'info', message: 'Launching application...' });
+
+      if (selectedSeriesId === 'gascii') {
+        const result = await window.launcher.series.launch('gascii');
+
+        if (!result.ok) {
+          throw new Error(result.error);
+        }
+
+        updateSeriesInStore(selectedSeriesId, { status: previousStatus });
+        addLog(selectedSeriesId, { level: 'success', message: `Launched in ${result.data.terminal}.` });
+        return;
+      }
 
       await terminalSeriesApi.launchSeries(selectedSeriesId);
 

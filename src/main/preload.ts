@@ -40,5 +40,24 @@ contextBridge.exposeInMainWorld('launcher', {
         ipcRenderer.off(IPC_CHANNELS.launcher.onDownloadProgress, listener);
       };
     }
+  },
+  series: {
+    getStatus: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.series.getStatus, { seriesId }),
+    install: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.series.install, { seriesId }),
+    launch: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.series.launch, { seriesId }),
+    onInstallProgress: (callback: (event: any) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: any) => callback(payload);
+      ipcRenderer.on(IPC_CHANNELS.series.installProgress, listener);
+      return () => {
+        ipcRenderer.off(IPC_CHANNELS.series.installProgress, listener);
+      };
+    },
+    onLaunchProgress: (callback: (event: any) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: any) => callback(payload);
+      ipcRenderer.on(IPC_CHANNELS.series.launchProgress, listener);
+      return () => {
+        ipcRenderer.off(IPC_CHANNELS.series.launchProgress, listener);
+      };
+    },
   }
 });

@@ -1,5 +1,15 @@
 import type { GameId, GameStatus } from '@shared/games';
-import type { TerminalSeriesId, LauncherSettingKey, SelectInstallPathResponse, SetSeriesOptionResponse } from '@shared/launcherTypes';
+import type {
+  GasciiInstallInfo,
+  LauncherSettingKey,
+  Result,
+  SelectInstallPathResponse,
+  SeriesInstallProgress,
+  SeriesLaunchProgress,
+  SeriesStatusInfo,
+  SetSeriesOptionResponse,
+  TerminalSeriesId,
+} from '@shared/launcherTypes';
 
 type LaunchResult =
   | {
@@ -40,6 +50,13 @@ declare global {
         downloadYoutube: (seriesId: TerminalSeriesId, url: string, format: 'mp4' | 'mp3') => Promise<import('@shared/launcherTypes').Result<{ downloadId: string }>>;
         cancel: (downloadId: string) => Promise<void>;
         onProgress: (callback: (event: import('@shared/launcherTypes').AssetDownloadProgress) => void) => () => void;
+      };
+      series: {
+        getStatus: (seriesId: TerminalSeriesId) => Promise<Result<SeriesStatusInfo>>;
+        install: (seriesId: TerminalSeriesId) => Promise<Result<GasciiInstallInfo>>;
+        launch: (seriesId: TerminalSeriesId) => Promise<Result<{ terminal: string; binaryPath: string }>>;
+        onInstallProgress: (callback: (event: SeriesInstallProgress) => void) => () => void;
+        onLaunchProgress: (callback: (event: SeriesLaunchProgress) => void) => () => void;
       };
     };
   }

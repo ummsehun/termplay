@@ -19,6 +19,63 @@ export type LauncherConfig = {
   }>;
 };
 
+export type GasciiInstallInfo = {
+  installedVersion: string;
+  installPath: string;
+  binaryPath: string;
+  lastInstalledAt: string;
+};
+
+export type SeriesRuntimeState = {
+  gascii?: GasciiInstallInfo;
+};
+
+export type SeriesStatusInfo = {
+  seriesId: TerminalSeriesId;
+  installedVersion: string | null;
+  latestVersion: string | null;
+  installPath: string | null;
+  binaryPath: string | null;
+  status: 'not-installed' | 'installed' | 'update-available';
+};
+
+export type SeriesInstallStage =
+  | 'resolving'
+  | 'downloading'
+  | 'extracting'
+  | 'permissions'
+  | 'completed'
+  | 'failed';
+
+export type SeriesInstallProgress = {
+  seriesId: TerminalSeriesId;
+  stage: SeriesInstallStage;
+  progress: number;
+  message: string;
+  version?: string;
+  error?: string;
+};
+
+export type SeriesLaunchStage =
+  | 'resolving'
+  | 'checking-installation'
+  | 'checking-version'
+  | 'verifying-binary'
+  | 'preparing-permissions'
+  | 'preparing-terminal'
+  | 'launching'
+  | 'completed'
+  | 'failed';
+
+export type SeriesLaunchProgress = {
+  seriesId: TerminalSeriesId;
+  stage: SeriesLaunchStage;
+  stepLabel: string;
+  progress: number;
+  message: string;
+  error?: string;
+};
+
 export type SelectInstallPathResponse = Result<{
   path: string;
 }>;

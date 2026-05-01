@@ -15,5 +15,12 @@ export const IPC_CHANNELS = {
     downloadYoutube: 'launcher:download-youtube',
     cancelDownload: 'launcher:cancel-download',
     onDownloadProgress: 'launcher:on-download-progress',
-  }
+  },
+  series: {
+    getStatus: 'series:get-status',
+    install: 'series:install',
+    launch: 'series:launch',
+    installProgress: 'series:install-progress',
+    launchProgress: 'series:launch-progress',
+  },
 } as const;
