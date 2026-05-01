@@ -7,6 +7,7 @@ import type {
   SeriesInstallProgress,
   SeriesLaunchProgress,
   SeriesStatusInfo,
+  SeriesVerifyResult,
   SetSeriesOptionResponse,
   TerminalSeriesId,
 } from '@shared/launcherTypes';
@@ -42,7 +43,7 @@ declare global {
       };
       library: {
         getDirSummary: (seriesId: TerminalSeriesId) => Promise<import('@shared/launcherTypes').GetDirSummaryResponse>;
-        openDir: (seriesId: string, dir: string) => Promise<void>;
+        openDir: (seriesId: string, dir: string) => Promise<Result<{ path: string; copiedCount: number }>>;
       };
       assets: {
         list: (seriesId: TerminalSeriesId) => Promise<import('@shared/launcherTypes').GetAssetListResponse>;
@@ -55,6 +56,9 @@ declare global {
         getStatus: (seriesId: TerminalSeriesId) => Promise<Result<SeriesStatusInfo>>;
         install: (seriesId: TerminalSeriesId) => Promise<Result<GasciiInstallInfo>>;
         launch: (seriesId: TerminalSeriesId) => Promise<Result<{ terminal: string; binaryPath: string }>>;
+        verify: (seriesId: TerminalSeriesId) => Promise<Result<SeriesVerifyResult>>;
+        remove: (seriesId: TerminalSeriesId) => Promise<Result<null>>;
+        revealInstallDir: (seriesId: TerminalSeriesId) => Promise<Result<{ path: string }>>;
         onInstallProgress: (callback: (event: SeriesInstallProgress) => void) => () => void;
         onLaunchProgress: (callback: (event: SeriesLaunchProgress) => void) => () => void;
       };

@@ -1,8 +1,8 @@
-import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow, ipcMain, shell } from 'electron';
 import { IPC_CHANNELS } from '@shared/ipc';
 import { type SeriesInstallProgress, type SeriesLaunchProgress, type TerminalSeriesId } from '@shared/launcherTypes';
 import { createLogger } from '@shared/logger';
-import { createSplashWindow } from '../core/create-splash-window';
+import { createSplashWindow, waitForSplashWindowReady } from '../core/create-splash-window';
 import { gasciiSeriesService } from '../services/gascii-series.service';
 import { toErrorMessage } from '../utils/error';
 
@@ -71,21 +71,7 @@ export const registerSeriesHandlers = (): void => {
     try {
       assertGascii(payload.seriesId);
       splashWindow = createSplashWindow();
-      await new Promise<void>((resolve) => {
-        if (!splashWindow) {
-          resolve();
-          return;
-        }
-
-        if (!splashWindow.webContents.isLoading()) {
-          resolve();
-          return;
-        }
-
-        const finish = () => resolve();
-        splashWindow.webContents.once('did-finish-load', finish);
-        splashWindow.webContents.once('did-fail-load', finish);
-      });
+      await waitForSplashWindowReady(splashWindow);
       const result = await gasciiSeriesService.launch(sendProgress);
       const windowToClose = splashWindow;
       setTimeout(() => {
@@ -112,6 +98,65 @@ export const registerSeriesHandlers = (): void => {
       return {
         ok: false,
         error: message,
+      };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.series.verify, async (_event, payload: { seriesId: TerminalSeriesId }) => {
+    try {
+      assertGascii(payload.seriesId);
+      return {
+        ok: true,
+        data: await gasciiSeriesService.verify(),
+      };
+    } catch (error) {
+      logger.error('verify failed', error);
+      return {
+        ok: false,
+        error: toErrorMessage(error),
+      };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.series.remove, async (_event, payload: { seriesId: TerminalSeriesId }) => {
+    try {
+      assertGascii(payload.seriesId);
+      await gasciiSeriesService.remove();
+      return {
+        ok: true,
+        data: null,
+      };
+    } catch (error) {
+      logger.error('remove failed', error);
+      return {
+        ok: false,
+        error: toErrorMessage(error),
+      };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.series.revealInstallDir, async (_event, payload: { seriesId: TerminalSeriesId }) => {
+    try {
+      assertGascii(payload.seriesId);
+      const status = await gasciiSeriesService.getStatus();
+      if (!status.installPath) {
+        throw new Error('Gascii is not installed');
+      }
+
+      const error = await shell.openPath(status.installPath);
+      if (error) {
+        throw new Error(error);
+      }
+
+      return {
+        ok: true,
+        data: { path: status.installPath },
+      };
+    } catch (error) {
+      logger.error('revealInstallDir failed', error);
+      return {
+        ok: false,
+        error: toErrorMessage(error),
       };
     }
   });

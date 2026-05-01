@@ -9,15 +9,24 @@ export const LibraryPanel: React.FC = () => {
   const { selectedSeriesId } = useTerminalSeriesStore();
   const config = getSeriesFeatureConfig(selectedSeriesId);
   const [summaries, setSummaries] = useState<DirSummary[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const refreshSummaries = () => {
     if (selectedSeriesId) {
       window.launcher.library.getDirSummary(selectedSeriesId as TerminalSeriesId).then((result) => {
         if (result.ok) {
           setSummaries(result.data);
+          setError(null);
+          return;
         }
+
+        setError(result.error);
       });
     }
+  };
+
+  useEffect(() => {
+    refreshSummaries();
   }, [selectedSeriesId]);
 
   if (!selectedSeriesId || !config) {
@@ -29,8 +38,18 @@ export const LibraryPanel: React.FC = () => {
   }
 
   const handleOpenDir = async (dirKey: string) => {
-    await window.launcher.library.openDir(selectedSeriesId, dirKey);
+    const result = await window.launcher.library.openDir(selectedSeriesId, dirKey);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    setError(null);
+    refreshSummaries();
   };
+
+  const isGascii = selectedSeriesId === 'gascii';
+  const hasEmptyGasciiAssetDir = isGascii && summaries.some((summary) => !summary.exists || summary.fileCount === 0);
 
   return (
     <div className="flex flex-col h-full bg-[#111111]">
@@ -42,6 +61,21 @@ export const LibraryPanel: React.FC = () => {
       </div>
       
       <div className="flex-1 p-10 overflow-y-auto scrollbar-none">
+        {error && (
+          <div className="mb-5 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-[13px] text-red-200">
+            {error}
+          </div>
+        )}
+        {hasEmptyGasciiAssetDir && (
+          <div className="mb-5 rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-4">
+            <h3 className="text-[14px] font-bold text-yellow-300">
+              {t('launcher.feature_modal.library.gascii_assets_required')}
+            </h3>
+            <p className="mt-1 text-[13px] leading-5 text-yellow-100/70">
+              {t('launcher.feature_modal.library.gascii_assets_required_desc')}
+            </p>
+          </div>
+        )}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {config.libraryDirs.map((dir, idx) => {
             const summary = summaries.find(s => s.dirKey === dir.key);

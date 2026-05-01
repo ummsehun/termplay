@@ -20,6 +20,8 @@ type TerminalSeriesState = {
   launchSelectedSeries: () => Promise<void>;
   updateSelectedSeries: () => Promise<void>;
   removeSelectedSeries: () => Promise<void>;
+  verifySelectedSeries: () => Promise<void>;
+  revealSelectedSeriesInstallDir: () => Promise<void>;
 
   // Internal helpers
   updateSeriesInStore: (id: string, updates: Partial<TerminalSeries>) => void;
@@ -216,6 +218,22 @@ export const useTerminalSeriesStore = create<TerminalSeriesState>((set, get) => 
       set({ isActionPending: true, error: null });
       addLog(selectedSeriesId, { level: 'warning', message: 'Removing application...' });
 
+      if (selectedSeriesId === 'gascii') {
+        const result = await window.launcher.series.remove('gascii');
+        if (!result.ok) {
+          throw new Error(result.error);
+        }
+
+        updateSeriesInStore(selectedSeriesId, {
+          status: 'not-installed',
+          installedVersion: null,
+          installPath: null,
+          assets: get().series.find(s => s.id === selectedSeriesId)?.assets.map(a => ({ ...a, status: 'not-installed' })) || []
+        });
+        addLog(selectedSeriesId, { level: 'success', message: 'Gascii removed.' });
+        return;
+      }
+
       await terminalSeriesApi.removeSeries(selectedSeriesId);
 
       updateSeriesInStore(selectedSeriesId, { 
@@ -231,6 +249,57 @@ export const useTerminalSeriesStore = create<TerminalSeriesState>((set, get) => 
       set({ error: err.message });
     } finally {
       set({ isActionPending: false });
+    }
+  },
+
+  verifySelectedSeries: async () => {
+    const { selectedSeriesId, addLog } = get();
+    if (!selectedSeriesId) return;
+
+    try {
+      set({ isActionPending: true, error: null });
+
+      if (selectedSeriesId !== 'gascii') {
+        addLog(selectedSeriesId, { level: 'warning', message: 'Integrity check is not available for this series yet.' });
+        return;
+      }
+
+      const result = await window.launcher.series.verify('gascii');
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      addLog('gascii', {
+        level: result.data.ok ? 'success' : 'warning',
+        message: result.data.ok ? result.data.message : `${result.data.message}: ${result.data.missing.join(', ')}`,
+      });
+    } catch (err: any) {
+      addLog(selectedSeriesId, { level: 'error', message: `Integrity check failed: ${err.message}` });
+      set({ error: err.message });
+    } finally {
+      set({ isActionPending: false });
+    }
+  },
+
+  revealSelectedSeriesInstallDir: async () => {
+    const { selectedSeriesId, addLog } = get();
+    if (!selectedSeriesId) return;
+
+    try {
+      if (selectedSeriesId !== 'gascii') {
+        addLog(selectedSeriesId, { level: 'warning', message: 'Install folder reveal is not available for this series yet.' });
+        return;
+      }
+
+      const result = await window.launcher.series.revealInstallDir('gascii');
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      addLog('gascii', { level: 'info', message: `Opened install folder: ${result.data.path}` });
+    } catch (err: any) {
+      addLog(selectedSeriesId, { level: 'error', message: `Failed to open install folder: ${err.message}` });
+      set({ error: err.message });
     }
   },
 }));

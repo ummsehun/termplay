@@ -25,7 +25,7 @@ const initialState = {
   },
   series: {
     gascii: {
-      installPath: 'C:\\Program Files\\Lanchaer\\gascii',
+      installPath: '',
       options: {
         hwAccel: true,
         autoClean: true,
@@ -149,6 +149,7 @@ export const useLauncherConfigStore = create<LauncherConfigState & { load: () =>
           }
         }
       }));
+      throw e;
     }
   }
 }));

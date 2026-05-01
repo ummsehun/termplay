@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTerminalSeriesStore } from '../stores/terminalSeriesStore';
-import { CloudDownload, Loader2, Menu } from 'lucide-react';
+import { CloudDownload, FolderOpen, Loader2, Menu, ShieldCheck, Trash2 } from 'lucide-react';
 import { cn } from '../../../shared/lib/cn';
 import { useTranslation } from 'react-i18next';
 
 export const SeriesActionBar: React.FC = () => {
   const { t } = useTranslation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { 
     series, 
     selectedSeriesId, 
@@ -13,6 +14,9 @@ export const SeriesActionBar: React.FC = () => {
     installSelectedSeries, 
     launchSelectedSeries, 
     updateSelectedSeries,
+    removeSelectedSeries,
+    verifySelectedSeries,
+    revealSelectedSeriesInstallDir,
     actionProgressBySeries,
   } = useTerminalSeriesStore();
 
@@ -66,7 +70,7 @@ export const SeriesActionBar: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="relative flex items-center gap-4">
       
       {/* Download Status Info (Mock) */}
       {(status === 'update-available' || status === 'installing' || status === 'updating') && (
@@ -106,11 +110,54 @@ export const SeriesActionBar: React.FC = () => {
       <div className="flex items-center">
         {renderPrimaryAction()}
         
-        {/* Dropdown Menu Toggle (Mock) */}
-        <button className="h-[72px] w-14 bg-launcher-cta/90 hover:bg-launcher-cta text-launcher-cta-text flex items-center justify-center rounded-r-xl border-l border-black/20">
+        <button
+          onClick={() => setIsMenuOpen((value) => !value)}
+          disabled={isPending}
+          className="h-[72px] w-14 bg-launcher-cta/90 hover:bg-launcher-cta disabled:opacity-50 text-launcher-cta-text flex items-center justify-center rounded-r-xl border-l border-black/20"
+          title={t('launcher.options')}
+        >
           <Menu size={24} strokeWidth={3} />
         </button>
       </div>
+
+      {isMenuOpen && (
+        <div className="absolute bottom-[84px] right-0 z-[80] w-64 overflow-hidden rounded-xl border border-white/10 bg-black/85 shadow-2xl backdrop-blur-xl">
+          <button
+            onClick={() => {
+              setIsMenuOpen(false);
+              verifySelectedSeries();
+            }}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-semibold text-white/85 hover:bg-white/10"
+          >
+            <ShieldCheck size={18} />
+            {t('launcher.option_verify')}
+          </button>
+          <button
+            onClick={() => {
+              setIsMenuOpen(false);
+              revealSelectedSeriesInstallDir();
+            }}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-semibold text-white/85 hover:bg-white/10"
+          >
+            <FolderOpen size={18} />
+            {t('launcher.option_open_install_dir')}
+          </button>
+          <button
+            onClick={() => {
+              setIsMenuOpen(false);
+              if (!window.confirm(t('launcher.option_remove_confirm'))) {
+                return;
+              }
+              removeSelectedSeries();
+            }}
+            disabled={status === 'not-installed'}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-semibold text-red-300 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Trash2 size={18} />
+            {t('launcher.option_remove')}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

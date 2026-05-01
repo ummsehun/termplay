@@ -14,6 +14,11 @@
     "installing": "설치 중",
     "updating": "업데이트 중",
     "update_available": "업데이트 가능",
+    "options": "옵션",
+    "option_verify": "무결성 검사",
+    "option_open_install_dir": "설치 폴더 열기",
+    "option_remove": "삭제",
+    "option_remove_confirm": "Gascii 설치 파일을 삭제할까요?",
     "no_assets": "추가 에셋이 필요하지 않습니다.",
     "required": "필수",
     "no_logs": "실행 정보가 없습니다.",
@@ -58,7 +63,9 @@
         "title": "로컬 라이브러리",
         "desc": "다운로드된 에셋과 프로젝트 파일을 관리합니다.",
         "files": "개 파일",
-        "open_folder": "폴더 열기"
+        "open_folder": "폴더 열기",
+        "gascii_assets_required": "Gascii 실행에 미디어 파일이 필요합니다",
+        "gascii_assets_required_desc": "VIDEO에는 비디오 파일을, AUDIO에는 오디오 파일을 넣어주세요. 각 카드를 클릭하면 해당 폴더가 바로 열립니다."
       },
       "assets": {
         "title": "에셋 매니저",

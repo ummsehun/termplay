@@ -8,15 +8,32 @@ import { createLogger } from '@shared/logger';
 import { SelectInstallPathResponse, SetSeriesOptionRequest, SetSeriesOptionResponse, TerminalSeriesId, DirSummary, GetDirSummaryResponse, LibraryDirKey, GetAssetListResponse } from '@shared/launcherTypes';
 import { launcherConfigRepo } from '../launcher/launcherConfigRepository';
 import { handleDownloadYoutube, cancelYoutubeDownload } from '../downloader/youtubeDownloader';
+import { gasciiSeriesService } from '../services/gascii-series.service';
 
 const logger = createLogger('launcher-handler');
 
 const activeDownloads = new Map<string, AbortController>();
 
+const getLibraryInstallPath = async (seriesId: TerminalSeriesId): Promise<string> => {
+  if (seriesId === 'gascii') {
+    const gasciiInfo = await launcherConfigRepo.getGasciiInstallInfo();
+    if (gasciiInfo?.installPath) {
+      return gasciiInfo.installPath;
+    }
+  }
+
+  const config = await launcherConfigRepo.getConfig();
+  return config.series[seriesId].installPath;
+};
+
 export const registerLauncherHandlers = (): void => {
   ipcMain.handle(IPC_CHANNELS.launcher.getSettings, async () => {
     try {
       const config = await launcherConfigRepo.getConfig();
+      const gasciiInfo = await launcherConfigRepo.getGasciiInstallInfo();
+      if (gasciiInfo?.installPath) {
+        config.series.gascii.installPath = gasciiInfo.installPath;
+      }
       return { ok: true, data: config };
     } catch (error: any) {
       logger.error('getSettings failed', error);
@@ -48,6 +65,17 @@ export const registerLauncherHandlers = (): void => {
 
   ipcMain.handle(IPC_CHANNELS.launcher.setInstallPath, async (_event, payload: { seriesId: TerminalSeriesId; path: string }) => {
     try {
+      if (payload.seriesId === 'gascii') {
+        const gasciiInfo = await launcherConfigRepo.getGasciiInstallInfo();
+        try {
+          await gasciiSeriesService.bindInstallPath(payload.path);
+        } catch (error) {
+          if (gasciiInfo) {
+            throw new Error('선택한 폴더에서 Gascii 실행 파일을 찾을 수 없습니다.');
+          }
+        }
+      }
+
       const config = await launcherConfigRepo.getConfig();
       config.series[payload.seriesId].installPath = payload.path;
       await launcherConfigRepo.saveConfig(config);
@@ -89,20 +117,21 @@ export const registerLauncherHandlers = (): void => {
 
   ipcMain.handle(IPC_CHANNELS.launcher.getDirSummary, async (_event, payload: { seriesId: TerminalSeriesId }): Promise<GetDirSummaryResponse> => {
     try {
-      const config = await launcherConfigRepo.getConfig();
-      const installPath = config.series[payload.seriesId].installPath;
+      const installPath = await getLibraryInstallPath(payload.seriesId);
       if (!installPath) {
         return { ok: true, data: [] }; // No install path set yet
       }
 
-      const dirsToCheck: LibraryDirKey[] = payload.seriesId === 'gascii' 
+      const dirsToCheck: LibraryDirKey[] = payload.seriesId === 'gascii'
         ? ['video', 'audio'] 
         : ['music', 'glb', 'camera', 'stage', 'vmd', 'pmx'];
 
       const summaries: DirSummary[] = [];
 
       for (const dirKey of dirsToCheck) {
-        const fullPath = path.join(installPath, dirKey);
+        const fullPath = payload.seriesId === 'gascii'
+          ? path.join(installPath, 'assets', dirKey)
+          : path.join(installPath, dirKey);
         let exists = false;
         let fileCount = 0;
         let sizeBytes = 0;
@@ -137,14 +166,15 @@ export const registerLauncherHandlers = (): void => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.launcher.openLibraryDir, async (_event, payload: { seriesId: TerminalSeriesId; dir: string }) => {
+  ipcMain.handle(IPC_CHANNELS.launcher.openLibraryDir, async (event, payload: { seriesId: TerminalSeriesId; dir: string }) => {
     try {
       logger.info(`openLibraryDir: ${payload.seriesId} -> ${payload.dir}`);
-      const config = await launcherConfigRepo.getConfig();
-      const installPath = config.series[payload.seriesId].installPath;
+      const installPath = await getLibraryInstallPath(payload.seriesId);
       if (!installPath) return { ok: false, error: 'Install path not set' };
 
-      const fullPath = path.join(installPath, payload.dir);
+      const fullPath = payload.seriesId === 'gascii'
+        ? path.join(installPath, 'assets', payload.dir)
+        : path.join(installPath, payload.dir);
       
       const relative = path.relative(installPath, fullPath);
       if (relative.startsWith('..') || path.isAbsolute(relative)) {
@@ -157,11 +187,39 @@ export const registerLauncherHandlers = (): void => {
         await fs.mkdir(fullPath, { recursive: true });
       }
 
+      if (payload.seriesId === 'gascii' && (payload.dir === 'video' || payload.dir === 'audio')) {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        const filters = payload.dir === 'video'
+          ? [{ name: 'Video Files', extensions: ['mp4', 'mov', 'mkv', 'webm', 'avi'] }]
+          : [{ name: 'Audio Files', extensions: ['mp3', 'wav', 'flac', 'm4a', 'aac', 'ogg'] }];
+        const result = win
+          ? await dialog.showOpenDialog(win, {
+              title: payload.dir === 'video' ? 'Add Gascii video files' : 'Add Gascii audio files',
+              properties: ['openFile', 'multiSelections'],
+              filters,
+            })
+          : await dialog.showOpenDialog({
+              title: payload.dir === 'video' ? 'Add Gascii video files' : 'Add Gascii audio files',
+              properties: ['openFile', 'multiSelections'],
+              filters,
+            });
+
+        if (result.canceled || result.filePaths.length === 0) {
+          return { ok: true, data: { path: fullPath, copiedCount: 0 } };
+        }
+
+        for (const filePath of result.filePaths) {
+          await fs.copyFile(filePath, path.join(fullPath, path.basename(filePath)));
+        }
+
+        return { ok: true, data: { path: fullPath, copiedCount: result.filePaths.length } };
+      }
+
       const error = await shell.openPath(fullPath);
       if (error) {
         return { ok: false, error };
       }
-      return { ok: true, data: null };
+      return { ok: true, data: { path: fullPath, copiedCount: 0 } };
     } catch (error: any) {
       logger.error('openLibraryDir failed', error);
       return { ok: false, error: error.message };

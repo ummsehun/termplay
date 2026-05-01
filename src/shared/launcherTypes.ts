@@ -39,6 +39,14 @@ export type SeriesStatusInfo = {
   status: 'not-installed' | 'installed' | 'update-available';
 };
 
+export type SeriesVerifyResult = {
+  seriesId: TerminalSeriesId;
+  ok: boolean;
+  checkedPaths: string[];
+  missing: string[];
+  message: string;
+};
+
 export type SeriesInstallStage =
   | 'resolving'
   | 'downloading'

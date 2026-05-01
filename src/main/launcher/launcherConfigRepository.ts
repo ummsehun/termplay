@@ -115,6 +115,11 @@ export class LauncherConfigRepository {
     await this.ensureDefaultConfig();
     this.getStore().set('runtime.gascii', info);
   }
+
+  async clearGasciiInstallInfo(): Promise<void> {
+    await this.ensureDefaultConfig();
+    this.getStore().delete('runtime.gascii');
+  }
 }
 
 export const launcherConfigRepo = new LauncherConfigRepository();

@@ -11,6 +11,7 @@ import {
   type SeriesInstallProgress,
   type SeriesLaunchProgress,
   type SeriesStatusInfo,
+  type SeriesVerifyResult,
 } from '@shared/launcherTypes';
 import { createLogger } from '@shared/logger';
 import { launcherConfigRepo } from '../launcher/launcherConfigRepository';
@@ -80,7 +81,7 @@ const MAC_TERMINAL_PRIORITY: TerminalLauncher[] = [
       '/Applications/Ghostty.app/Contents/MacOS/ghostty',
       `${process.env.HOME ?? ''}/Applications/Ghostty.app/Contents/MacOS/ghostty`,
     ],
-    args: (cwd, binaryPath) => [`--working-directory=${cwd}`, '-e', binaryPath],
+    args: (cwd, binaryPath) => [`--working-directory=${cwd}`, '-e', 'sh', '-lc', `${shellQuoteValue(binaryPath)}; exit_code=$?; printf "\\nGascii exited with code %s. Press Enter to close..." "$exit_code"; read _; exit "$exit_code"`],
   },
   {
     name: 'kitty',
@@ -90,9 +91,11 @@ const MAC_TERMINAL_PRIORITY: TerminalLauncher[] = [
       '/Applications/kitty.app/Contents/MacOS/kitty',
       `${process.env.HOME ?? ''}/Applications/kitty.app/Contents/MacOS/kitty`,
     ],
-    args: (cwd, binaryPath) => ['--directory', cwd, '--start-as', 'fullscreen', binaryPath],
+    args: (cwd, binaryPath) => ['--directory', cwd, '--start-as', 'fullscreen', 'sh', '-lc', `${shellQuoteValue(binaryPath)}; exit_code=$?; printf "\\nGascii exited with code %s. Press Enter to close..." "$exit_code"; read _; exit "$exit_code"`],
   },
 ];
+
+const shellQuoteValue = (value: string): string => `'${value.replace(/'/g, "'\\''")}'`;
 
 export class GasciiSeriesService {
   async getStatus(): Promise<SeriesStatusInfo> {
@@ -127,7 +130,7 @@ export class GasciiSeriesService {
     const release = await this.resolveLatestRelease();
     const termRoot = launcherConfigRepo.getTermRoot();
     const downloadRoot = join(termRoot, '.downloads');
-    const installPath = join(termRoot, 'gascii');
+    const installPath = await this.resolveInstallPath();
     const backupPath = join(termRoot, 'gascii.previous');
     const stagingPath = join(termRoot, `.gascii-${Date.now()}`);
     const archivePath = join(downloadRoot, release.asset.name);
@@ -148,6 +151,9 @@ export class GasciiSeriesService {
       lastInstalledAt: new Date().toISOString(),
     };
     await launcherConfigRepo.setGasciiInstallInfo(info);
+    const config = await launcherConfigRepo.getConfig();
+    config.series.gascii.installPath = installPath;
+    await launcherConfigRepo.saveConfig(config);
     await fs.rm(backupPath, { recursive: true, force: true });
     await fs.rm(archivePath, { force: true });
 
@@ -155,35 +161,128 @@ export class GasciiSeriesService {
     return info;
   }
 
+  async verify(): Promise<SeriesVerifyResult> {
+    const installed = await launcherConfigRepo.getGasciiInstallInfo();
+    if (!installed) {
+      return {
+        seriesId: 'gascii',
+        ok: false,
+        checkedPaths: [],
+        missing: ['Gascii installation'],
+        message: 'Gascii is not installed',
+      };
+    }
+
+    const videoPath = join(installed.installPath, 'assets', 'video');
+    const legacyVidioPath = join(installed.installPath, 'assets', 'vidio');
+    const audioPath = join(installed.installPath, 'assets', 'audio');
+    const checkedPaths = [installed.installPath, installed.binaryPath, videoPath, audioPath];
+    const missing: string[] = [];
+
+    if (!existsSync(installed.installPath)) {
+      missing.push(installed.installPath);
+    }
+
+    if (!existsSync(installed.binaryPath)) {
+      missing.push(installed.binaryPath);
+    }
+
+    const [videoCount, legacyVidioCount, audioCount] = await Promise.all([
+      this.countFiles(videoPath),
+      this.countFiles(legacyVidioPath),
+      this.countFiles(audioPath),
+    ]);
+
+    if (videoCount + legacyVidioCount === 0) {
+      missing.push(videoPath);
+    }
+
+    if (audioCount === 0) {
+      missing.push(audioPath);
+    }
+
+    return {
+      seriesId: 'gascii',
+      ok: missing.length === 0,
+      checkedPaths,
+      missing,
+      message: missing.length === 0 ? 'Gascii integrity check passed' : 'Gascii integrity check found missing files',
+    };
+  }
+
+  async remove(): Promise<void> {
+    const installed = await launcherConfigRepo.getGasciiInstallInfo();
+    const installPath = installed?.installPath || (await this.resolveInstallPath());
+
+    if (installPath) {
+      await fs.rm(installPath, { recursive: true, force: true });
+    }
+
+    await launcherConfigRepo.clearGasciiInstallInfo();
+    const config = await launcherConfigRepo.getConfig();
+    config.series.gascii.installPath = '';
+    await launcherConfigRepo.saveConfig(config);
+  }
+
+  async bindInstallPath(installPath: string): Promise<GasciiInstallInfo> {
+    const binaryPath = this.getBinaryPath(installPath);
+    await fs.access(binaryPath, fs.constants.X_OK);
+
+    const installed = await launcherConfigRepo.getGasciiInstallInfo();
+    const info: GasciiInstallInfo = {
+      installedVersion: installed?.installedVersion ?? 'local',
+      installPath,
+      binaryPath,
+      lastInstalledAt: installed?.lastInstalledAt ?? new Date().toISOString(),
+    };
+
+    await launcherConfigRepo.setGasciiInstallInfo(info);
+    const config = await launcherConfigRepo.getConfig();
+    config.series.gascii.installPath = installPath;
+    await launcherConfigRepo.saveConfig(config);
+
+    return info;
+  }
+
   async launch(onProgress: LaunchProgressListener): Promise<{ terminal: string; binaryPath: string }> {
     this.assertSupportedPlatform();
     this.emitLaunch(onProgress, 0, 'Resolving Gascii launch request');
+    await this.pauseForSplashStep();
 
     const installed = await launcherConfigRepo.getGasciiInstallInfo();
     this.emitLaunch(onProgress, 1, 'Checking installed files');
+    await this.pauseForSplashStep();
     if (!installed) {
       throw new Error('Gascii is not installed');
     }
 
     this.emitLaunch(onProgress, 2, `Installed version: ${installed.installedVersion}`);
+    await this.pauseForSplashStep();
 
     this.emitLaunch(onProgress, 3, 'Verifying executable binary');
     await fs.access(installed.binaryPath, fs.constants.X_OK);
+    await this.ensureGasciiAssetsReady(installed.installPath);
+    await this.pauseForSplashStep();
 
     this.emitLaunch(onProgress, 4, 'Preparing executable permissions');
     await this.prepareBinaryPermissions(installed.installPath, installed.binaryPath);
+    await this.pauseForSplashStep();
 
     this.emitLaunch(onProgress, 5, 'Preparing external terminal');
-    this.emitLaunch(onProgress, 6, 'Launching Gascii');
-    const terminal = this.launchInTerminal(installed.installPath, installed.binaryPath);
+    await this.pauseForSplashStep();
 
+    this.emitLaunch(onProgress, 6, 'Launching Gascii');
+    await this.pauseForSplashStep();
     onProgress({
       seriesId: 'gascii',
       stage: 'completed',
       stepLabel: 'Launching',
       progress: 100,
-      message: `Launched in ${terminal}`,
+      message: 'Opening external terminal',
     });
+    await this.pauseForSplashComplete();
+
+    const terminal = this.launchInTerminal(installed.installPath, installed.binaryPath);
 
     return {
       terminal,
@@ -369,6 +468,45 @@ export class GasciiSeriesService {
     throw new Error('Archive layout is not supported');
   }
 
+  private async resolveInstallPath(): Promise<string> {
+    const config = await launcherConfigRepo.getConfig();
+    return config.series.gascii.installPath || join(launcherConfigRepo.getTermRoot(), 'gascii');
+  }
+
+  private async ensureGasciiAssetsReady(installPath: string): Promise<void> {
+    const assetsPath = join(installPath, 'assets');
+    const videoPath = join(assetsPath, 'video');
+    const audioPath = join(assetsPath, 'audio');
+    const legacyVidioPath = join(assetsPath, 'vidio');
+
+    await fs.mkdir(videoPath, { recursive: true });
+    await fs.mkdir(audioPath, { recursive: true });
+
+    const [videoCount, legacyVidioCount, audioCount] = await Promise.all([
+      this.countFiles(videoPath),
+      this.countFiles(legacyVidioPath),
+      this.countFiles(audioPath),
+    ]);
+
+    if (videoCount + legacyVidioCount === 0 || audioCount === 0) {
+      throw new Error('Gascii assets are missing. Open Library and add media files to assets/video and assets/audio.');
+    }
+  }
+
+  private async countFiles(directoryPath: string): Promise<number> {
+    try {
+      const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+      return entries.filter((entry) => entry.isFile()).length;
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'ENOENT') {
+        return 0;
+      }
+
+      throw error;
+    }
+  }
+
   private launchInTerminal(cwd: string, binaryPath: string): string {
     if (platform() === 'darwin') {
       return this.launchInMacTerminalPriority(cwd, binaryPath);
@@ -391,9 +529,6 @@ export class GasciiSeriesService {
         } else {
           this.launchTerminalProcess(executable, launcher.args(cwd, binaryPath));
         }
-        if (launcher.appName) {
-          this.requestMacFullscreen(launcher.appName);
-        }
         return launcher.name;
       } catch (error) {
         logger.warn('terminal launch failed, trying next option', {
@@ -403,10 +538,22 @@ export class GasciiSeriesService {
       }
     }
 
-    const commandText = this.shellQuote(binaryPath);
-    const escapedCommand = commandText.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    const script = `tell application "Terminal" to do script "${escapedCommand}"`;
-    const result = spawnSync('osascript', ['-e', script], {
+    const scriptPath = join(cwd, 'run-gascii.command');
+    const script = [
+      '#!/bin/sh',
+      `cd ${this.shellQuote(cwd)}`,
+      this.shellQuote(binaryPath),
+      'exit_code=$?',
+      'printf "\\nGascii exited with code %s. Press Enter to close..." "$exit_code"',
+      'read _',
+      'exit "$exit_code"',
+      '',
+    ].join('\n');
+    spawnSync('/bin/sh', ['-lc', `umask 077; printf "%s" ${this.shellQuote(script)} > ${this.shellQuote(scriptPath)}; chmod 700 ${this.shellQuote(scriptPath)}`], {
+      stdio: 'ignore',
+    });
+
+    const result = spawnSync('open', ['-a', 'Terminal', scriptPath], {
       encoding: 'utf8',
       stdio: 'pipe',
     });
@@ -415,8 +562,6 @@ export class GasciiSeriesService {
       const detail = result.stderr.trim() || result.stdout.trim() || `exit code ${result.status}`;
       throw new Error(`Terminal launch failed: ${detail}`);
     }
-
-    this.requestMacFullscreen('Terminal');
     return 'Terminal';
   }
 
@@ -450,15 +595,19 @@ export class GasciiSeriesService {
   }
 
   private launchMacAppWithArgs(appName: string, args: string[]): void {
-    const child = spawn('open', ['-na', appName, '--args', ...args], {
-      detached: true,
-      stdio: 'ignore',
+    const result = spawnSync('open', ['-na', appName, '--args', ...args], {
+      encoding: 'utf8',
+      stdio: 'pipe',
     });
 
-    child.once('error', (error) => {
-      logger.error('mac app launch failed after launch', error);
-    });
-    child.unref();
+    if (result.error) {
+      throw new Error(`Ghostty launch failed: ${result.error.message}`);
+    }
+
+    if (result.status !== 0) {
+      const detail = result.stderr.trim() || result.stdout.trim() || `exit code ${result.status}`;
+      throw new Error(`Ghostty launch failed: ${detail}`);
+    }
   }
 
   private launchTerminalProcess(executable: string, args: string[]): ChildProcess {
@@ -473,23 +622,6 @@ export class GasciiSeriesService {
     child.unref();
 
     return child;
-  }
-
-  private requestMacFullscreen(appName: string): void {
-    const script = [
-      `tell application "${appName}" to activate`,
-      'delay 1.2',
-      'tell application "System Events" to keystroke "f" using {control down, command down}',
-    ].join('\n');
-
-    const result = spawnSync('osascript', ['-e', script], {
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-
-    if (result.status !== 0) {
-      logger.warn('fullscreen request failed', { terminal: appName, detail: result.stderr.trim() || result.stdout.trim() });
-    }
   }
 
   private resolveExecutable(executable: string, executablePaths: string[]): string | null {
@@ -612,6 +744,18 @@ export class GasciiSeriesService {
 
   private shellQuote(value: string): string {
     return `'${value.replace(/'/g, "'\\''")}'`;
+  }
+
+  private async pauseForSplashStep(): Promise<void> {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 260);
+    });
+  }
+
+  private async pauseForSplashComplete(): Promise<void> {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 700);
+    });
   }
 }
 

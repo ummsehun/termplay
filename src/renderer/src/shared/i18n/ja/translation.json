@@ -14,6 +14,11 @@
     "installing": "インストール中",
     "updating": "アップデート中",
     "update_available": "アップデート可能",
+    "options": "オプション",
+    "option_verify": "整合性チェック",
+    "option_open_install_dir": "インストールフォルダを開く",
+    "option_remove": "削除",
+    "option_remove_confirm": "Gascii のインストールファイルを削除しますか？",
     "no_assets": "追加アセットは必要ありません。",
     "required": "必須",
     "no_logs": "実行情報がありません。",
@@ -58,7 +63,9 @@
         "title": "ローカルライブラリ",
         "desc": "ダウンロードされたアセットとプロジェクトファイルを管理します。",
         "files": "ファイル",
-        "open_folder": "フォルダを開く"
+        "open_folder": "フォルダを開く",
+        "gascii_assets_required": "Gascii の実行にはメディアファイルが必要です",
+        "gascii_assets_required_desc": "VIDEO に動画ファイル、AUDIO に音声ファイルを入れてください。各カードをクリックすると対象フォルダが開きます。"
       },
       "assets": {
         "title": "アセットマネージャー",

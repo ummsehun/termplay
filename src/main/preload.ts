@@ -45,6 +45,9 @@ contextBridge.exposeInMainWorld('launcher', {
     getStatus: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.series.getStatus, { seriesId }),
     install: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.series.install, { seriesId }),
     launch: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.series.launch, { seriesId }),
+    verify: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.series.verify, { seriesId }),
+    remove: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.series.remove, { seriesId }),
+    revealInstallDir: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.series.revealInstallDir, { seriesId }),
     onInstallProgress: (callback: (event: any) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, payload: any) => callback(payload);
       ipcRenderer.on(IPC_CHANNELS.series.installProgress, listener);

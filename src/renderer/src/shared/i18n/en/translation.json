@@ -14,6 +14,11 @@
     "installing": "INSTALLING",
     "updating": "UPDATING",
     "update_available": "Update Available",
+    "options": "Options",
+    "option_verify": "Verify Integrity",
+    "option_open_install_dir": "Open Install Folder",
+    "option_remove": "Remove",
+    "option_remove_confirm": "Remove the Gascii installation files?",
     "no_assets": "No additional assets required.",
     "required": "Required",
     "no_logs": "No execution info available.",
@@ -58,7 +63,9 @@
         "title": "Local Library",
         "desc": "Manage downloaded assets and project files.",
         "files": "files",
-        "open_folder": "Open Folder"
+        "open_folder": "Open Folder",
+        "gascii_assets_required": "Gascii requires media files",
+        "gascii_assets_required_desc": "Put video files in VIDEO and audio files in AUDIO. Click each card to open the target folder."
       },
       "assets": {
         "title": "Asset Manager",
