@@ -31,7 +31,6 @@ contextBridge.exposeInMainWorld('launcher', {
   assets: {
     list: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.launcher.getAssetList, { seriesId }),
     download: (seriesId: TerminalSeriesId, assetId: string) => ipcRenderer.invoke(IPC_CHANNELS.launcher.downloadAsset, { seriesId, assetId }),
-    downloadYoutube: (seriesId: TerminalSeriesId, url: string, format: 'mp4' | 'mp3') => ipcRenderer.invoke(IPC_CHANNELS.launcher.downloadYoutube, { seriesId, url, format }),
     cancel: (downloadId: string) => ipcRenderer.invoke(IPC_CHANNELS.launcher.cancelDownload, { downloadId }),
     onProgress: (callback: (event: any) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, payload: any) => callback(payload);
@@ -40,6 +39,18 @@ contextBridge.exposeInMainWorld('launcher', {
         ipcRenderer.off(IPC_CHANNELS.launcher.onDownloadProgress, listener);
       };
     }
+  },
+  mediaDownload: {
+    start: (request: import('@shared/launcherTypes').StartMediaDownloadRequest) =>
+      ipcRenderer.invoke(IPC_CHANNELS.mediaDownload.start, request),
+    cancel: (jobId: string) => ipcRenderer.invoke(IPC_CHANNELS.mediaDownload.cancel, jobId),
+    onProgress: (callback: (event: import('@shared/launcherTypes').MediaDownloadProgress) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: import('@shared/launcherTypes').MediaDownloadProgress) => callback(payload);
+      ipcRenderer.on(IPC_CHANNELS.mediaDownload.progress, listener);
+      return () => {
+        ipcRenderer.off(IPC_CHANNELS.mediaDownload.progress, listener);
+      };
+    },
   },
   series: {
     getStatus: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.series.getStatus, { seriesId }),

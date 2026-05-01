@@ -9,6 +9,8 @@ import type {
   SeriesStatusInfo,
   SeriesVerifyResult,
   SetSeriesOptionResponse,
+  StartMediaDownloadRequest,
+  MediaDownloadProgress,
   TerminalSeriesId,
 } from '@shared/launcherTypes';
 
@@ -48,9 +50,13 @@ declare global {
       assets: {
         list: (seriesId: TerminalSeriesId) => Promise<import('@shared/launcherTypes').GetAssetListResponse>;
         download: (seriesId: TerminalSeriesId, assetId: string) => Promise<void>;
-        downloadYoutube: (seriesId: TerminalSeriesId, url: string, format: 'mp4' | 'mp3') => Promise<import('@shared/launcherTypes').Result<{ downloadId: string }>>;
         cancel: (downloadId: string) => Promise<void>;
         onProgress: (callback: (event: import('@shared/launcherTypes').AssetDownloadProgress) => void) => () => void;
+      };
+      mediaDownload: {
+        start: (request: StartMediaDownloadRequest) => Promise<Result<{ jobId: string }>>;
+        cancel: (jobId: string) => Promise<Result<null>>;
+        onProgress: (callback: (event: MediaDownloadProgress) => void) => () => void;
       };
       series: {
         getStatus: (seriesId: TerminalSeriesId) => Promise<Result<SeriesStatusInfo>>;

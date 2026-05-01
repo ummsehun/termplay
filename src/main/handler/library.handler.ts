@@ -1,0 +1,154 @@
+import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import fs from 'fs/promises';
+import { constants as fsConstants } from 'fs';
+import path from 'path';
+import { IPC_CHANNELS } from '@shared/ipc';
+import {
+  type DirSummary,
+  type GetDirSummaryResponse,
+  type LibraryDirKey,
+  type TerminalSeriesId,
+} from '@shared/launcherTypes';
+import { createLogger } from '@shared/logger';
+import { launcherConfigRepo } from '../launcher/launcherConfigRepository';
+
+const logger = createLogger('library-handler');
+
+const resolveUniqueFilePath = async (directoryPath: string, fileName: string): Promise<string> => {
+  const parsed = path.parse(fileName);
+  let candidate = path.join(directoryPath, fileName);
+  let index = 1;
+
+  while (true) {
+    try {
+      await fs.access(candidate);
+      candidate = path.join(directoryPath, `${parsed.name}-${index}${parsed.ext}`);
+      index += 1;
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'ENOENT') {
+        return candidate;
+      }
+
+      throw error;
+    }
+  }
+};
+
+const getLibraryInstallPath = async (seriesId: TerminalSeriesId): Promise<string> => {
+  if (seriesId === 'gascii') {
+    const gasciiInfo = await launcherConfigRepo.getGasciiInstallInfo();
+    if (gasciiInfo?.installPath) {
+      return gasciiInfo.installPath;
+    }
+  }
+
+  const config = await launcherConfigRepo.getConfig();
+  return config.series[seriesId].installPath;
+};
+
+const getLibraryDirPath = (seriesId: TerminalSeriesId, installPath: string, dir: string): string => {
+  return seriesId === 'gascii'
+    ? path.join(installPath, 'assets', dir)
+    : path.join(installPath, dir);
+};
+
+export const registerLibraryHandlers = (): void => {
+  ipcMain.handle(IPC_CHANNELS.launcher.getDirSummary, async (_event, payload: { seriesId: TerminalSeriesId }): Promise<GetDirSummaryResponse> => {
+    try {
+      const installPath = await getLibraryInstallPath(payload.seriesId);
+      if (!installPath) {
+        return { ok: true, data: [] };
+      }
+
+      const dirsToCheck: LibraryDirKey[] = payload.seriesId === 'gascii'
+        ? ['video', 'audio']
+        : ['music', 'glb', 'camera', 'stage', 'vmd', 'pmx'];
+
+      const summaries: DirSummary[] = [];
+
+      for (const dirKey of dirsToCheck) {
+        const fullPath = getLibraryDirPath(payload.seriesId, installPath, dirKey);
+        let exists = false;
+        let fileCount = 0;
+        let sizeBytes = 0;
+        let error: string | undefined;
+
+        try {
+          const stats = await fs.stat(fullPath);
+          if (stats.isDirectory()) {
+            exists = true;
+            const files = await fs.readdir(fullPath);
+            fileCount = files.length;
+          }
+        } catch (e: any) {
+          if (e.code !== 'ENOENT') {
+            error = e.message;
+          }
+        }
+
+        summaries.push({ dirKey, exists, fileCount, sizeBytes, error });
+      }
+
+      return { ok: true, data: summaries };
+    } catch (error: any) {
+      logger.error('getDirSummary failed', error);
+      return { ok: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.launcher.openLibraryDir, async (event, payload: { seriesId: TerminalSeriesId; dir: string }) => {
+    try {
+      logger.info(`openLibraryDir: ${payload.seriesId} -> ${payload.dir}`);
+      const installPath = await getLibraryInstallPath(payload.seriesId);
+      if (!installPath) return { ok: false, error: 'Install path not set' };
+
+      const fullPath = getLibraryDirPath(payload.seriesId, installPath, payload.dir);
+      const relative = path.relative(installPath, fullPath);
+      if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        return { ok: false, error: 'Invalid directory path' };
+      }
+
+      await fs.mkdir(fullPath, { recursive: true });
+
+      if (payload.seriesId === 'gascii' && (payload.dir === 'video' || payload.dir === 'audio')) {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        const filters = payload.dir === 'video'
+          ? [{ name: 'Video Files', extensions: ['mp4', 'mov', 'mkv', 'webm', 'avi'] }]
+          : [{ name: 'Audio Files', extensions: ['mp3', 'wav', 'flac', 'm4a', 'aac', 'ogg'] }];
+        const result = win
+          ? await dialog.showOpenDialog(win, {
+              title: payload.dir === 'video' ? 'Add Gascii video files' : 'Add Gascii audio files',
+              properties: ['openFile', 'multiSelections'],
+              filters,
+            })
+          : await dialog.showOpenDialog({
+              title: payload.dir === 'video' ? 'Add Gascii video files' : 'Add Gascii audio files',
+              properties: ['openFile', 'multiSelections'],
+              filters,
+            });
+
+        if (result.canceled || result.filePaths.length === 0) {
+          return { ok: true, data: { path: fullPath, copiedCount: 0 } };
+        }
+
+        for (const filePath of result.filePaths) {
+          const targetFilePath = await resolveUniqueFilePath(fullPath, path.basename(filePath));
+          await fs.copyFile(filePath, targetFilePath, fsConstants.COPYFILE_EXCL);
+        }
+
+        return { ok: true, data: { path: fullPath, copiedCount: result.filePaths.length } };
+      }
+
+      const error = await shell.openPath(fullPath);
+      if (error) {
+        return { ok: false, error };
+      }
+
+      return { ok: true, data: { path: fullPath, copiedCount: 0 } };
+    } catch (error: any) {
+      logger.error('openLibraryDir failed', error);
+      return { ok: false, error: error.message };
+    }
+  });
+};

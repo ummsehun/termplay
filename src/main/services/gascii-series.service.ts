@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -15,29 +15,12 @@ import {
 } from '@shared/launcherTypes';
 import { createLogger } from '@shared/logger';
 import { launcherConfigRepo } from '../launcher/launcherConfigRepository';
+import { InputValidator } from '../downloader/inputValidator';
+import { compareTags } from './gascii-version';
+import { gasciiReleaseResolver, type GithubReleaseAsset, type SelectedRelease } from './gascii-release-resolver';
+import { gasciiTerminalLauncher } from './gascii-terminal-launcher';
 
 const logger = createLogger('gascii-series-service');
-
-const GAScii_OWNER = 'ummsehun';
-const GAScii_REPO = 'Gascii';
-const GITHUB_REPO_URL = `https://github.com/${GAScii_OWNER}/${GAScii_REPO}`;
-const LATEST_RELEASE_URL = `${GITHUB_REPO_URL}/releases/latest`;
-
-type GithubReleaseAsset = {
-  name: string;
-  browser_download_url: string;
-  size?: number;
-};
-
-type ReleaseVersion = {
-  tag: string;
-  parts: [number, number, number];
-};
-
-type SelectedRelease = {
-  tag: string;
-  asset: GithubReleaseAsset;
-};
 
 type InstallProgressListener = (event: SeriesInstallProgress) => void;
 type LaunchProgressListener = (event: SeriesLaunchProgress) => void;
@@ -64,39 +47,6 @@ const LAUNCH_STEPS: Array<{
   { stage: 'launching', label: 'Launching', progress: 94 },
 ];
 
-type TerminalLauncher = {
-  name: string;
-  appName?: string;
-  executable: string;
-  executablePaths: string[];
-  args: (cwd: string, binaryPath: string) => string[];
-};
-
-const MAC_TERMINAL_PRIORITY: TerminalLauncher[] = [
-  {
-    name: 'Ghostty',
-    appName: 'Ghostty',
-    executable: 'ghostty',
-    executablePaths: [
-      '/Applications/Ghostty.app/Contents/MacOS/ghostty',
-      `${process.env.HOME ?? ''}/Applications/Ghostty.app/Contents/MacOS/ghostty`,
-    ],
-    args: (cwd, binaryPath) => [`--working-directory=${cwd}`, '-e', 'sh', '-lc', `${shellQuoteValue(binaryPath)}; exit_code=$?; printf "\\nGascii exited with code %s. Press Enter to close..." "$exit_code"; read _; exit "$exit_code"`],
-  },
-  {
-    name: 'kitty',
-    appName: 'kitty',
-    executable: 'kitty',
-    executablePaths: [
-      '/Applications/kitty.app/Contents/MacOS/kitty',
-      `${process.env.HOME ?? ''}/Applications/kitty.app/Contents/MacOS/kitty`,
-    ],
-    args: (cwd, binaryPath) => ['--directory', cwd, '--start-as', 'fullscreen', 'sh', '-lc', `${shellQuoteValue(binaryPath)}; exit_code=$?; printf "\\nGascii exited with code %s. Press Enter to close..." "$exit_code"; read _; exit "$exit_code"`],
-  },
-];
-
-const shellQuoteValue = (value: string): string => `'${value.replace(/'/g, "'\\''")}'`;
-
 export class GasciiSeriesService {
   async getStatus(): Promise<SeriesStatusInfo> {
     const installed = await launcherConfigRepo.getGasciiInstallInfo();
@@ -119,15 +69,15 @@ export class GasciiSeriesService {
       latestVersion: latest?.tag ?? null,
       installPath: installed.installPath,
       binaryPath: installed.binaryPath,
-      status: latest && this.compareTags(latest.tag, installed.installedVersion) > 0 ? 'update-available' : 'installed',
+      status: latest && compareTags(latest.tag, installed.installedVersion) > 0 ? 'update-available' : 'installed',
     };
   }
 
   async install(onProgress: InstallProgressListener): Promise<GasciiInstallInfo> {
-    this.assertSupportedPlatform();
+    gasciiReleaseResolver.assertSupportedPlatform();
     this.emitInstall(onProgress, 'resolving', INSTALL_STAGES.resolving, 'Resolving latest Gascii release');
 
-    const release = await this.resolveLatestRelease();
+    const release = await gasciiReleaseResolver.resolveLatestRelease();
     const termRoot = launcherConfigRepo.getTermRoot();
     const downloadRoot = join(termRoot, '.downloads');
     const installPath = await this.resolveInstallPath();
@@ -213,9 +163,14 @@ export class GasciiSeriesService {
   async remove(): Promise<void> {
     const installed = await launcherConfigRepo.getGasciiInstallInfo();
     const installPath = installed?.installPath || (await this.resolveInstallPath());
+    const managedRoot = launcherConfigRepo.getTermRoot();
 
     if (installPath) {
-      await fs.rm(installPath, { recursive: true, force: true });
+      if (InputValidator.isInsideDirectory(managedRoot, installPath)) {
+        await fs.rm(installPath, { recursive: true, force: true });
+      } else {
+        logger.warn('skipped deleting unmanaged Gascii install path', { installPath, managedRoot });
+      }
     }
 
     await launcherConfigRepo.clearGasciiInstallInfo();
@@ -245,7 +200,7 @@ export class GasciiSeriesService {
   }
 
   async launch(onProgress: LaunchProgressListener): Promise<{ terminal: string; binaryPath: string }> {
-    this.assertSupportedPlatform();
+    gasciiReleaseResolver.assertSupportedPlatform();
     this.emitLaunch(onProgress, 0, 'Resolving Gascii launch request');
     await this.pauseForSplashStep();
 
@@ -282,7 +237,7 @@ export class GasciiSeriesService {
     });
     await this.pauseForSplashComplete();
 
-    const terminal = this.launchInTerminal(installed.installPath, installed.binaryPath);
+    const terminal = gasciiTerminalLauncher.launch(installed.installPath, installed.binaryPath);
 
     return {
       terminal,
@@ -292,68 +247,11 @@ export class GasciiSeriesService {
 
   private async tryResolveLatestRelease(): Promise<SelectedRelease | null> {
     try {
-      return await this.resolveLatestRelease();
+      return await gasciiReleaseResolver.resolveLatestRelease();
     } catch (error) {
       logger.warn('latest release lookup failed', error);
       return null;
     }
-  }
-
-  private async resolveLatestRelease(): Promise<SelectedRelease> {
-    const latestTag = await this.resolveLatestReleaseTag();
-    const version = this.parseReleaseVersion(latestTag);
-    const platformAssetSuffix = this.getAssetSuffix();
-
-    if (!version) {
-      throw new Error(`Unsupported Gascii release tag: ${latestTag}`);
-    }
-
-    const assetName = `gascii-${version.tag}-${platformAssetSuffix}`;
-
-    return {
-      tag: version.tag,
-      asset: {
-        name: assetName,
-        browser_download_url: `${GITHUB_REPO_URL}/releases/download/${version.tag}/${assetName}`,
-      },
-    };
-  }
-
-  private async resolveLatestReleaseTag(): Promise<string> {
-    const response = await fetch(LATEST_RELEASE_URL, {
-      method: 'HEAD',
-      redirect: 'follow',
-      headers: {
-        'User-Agent': 'TermPlay',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`GitHub latest release lookup failed: HTTP ${response.status}`);
-    }
-
-    const tag = this.parseTagFromReleaseUrl(response.url);
-    if (tag) {
-      return tag;
-    }
-
-    const fallbackResponse = await fetch(LATEST_RELEASE_URL, {
-      redirect: 'follow',
-      headers: {
-        'User-Agent': 'TermPlay',
-      },
-    });
-
-    if (!fallbackResponse.ok) {
-      throw new Error(`GitHub latest release lookup failed: HTTP ${fallbackResponse.status}`);
-    }
-
-    const fallbackTag = this.parseTagFromReleaseUrl(fallbackResponse.url);
-    if (!fallbackTag) {
-      throw new Error('Could not resolve latest Gascii release tag');
-    }
-
-    return fallbackTag;
   }
 
   private async downloadAsset(
@@ -507,151 +405,6 @@ export class GasciiSeriesService {
     }
   }
 
-  private launchInTerminal(cwd: string, binaryPath: string): string {
-    if (platform() === 'darwin') {
-      return this.launchInMacTerminalPriority(cwd, binaryPath);
-    }
-
-    return this.launchInLinuxTerminal(cwd, binaryPath);
-  }
-
-  private launchInMacTerminalPriority(cwd: string, binaryPath: string): string {
-    for (const launcher of MAC_TERMINAL_PRIORITY) {
-      const executable = this.resolveExecutable(launcher.executable, launcher.executablePaths);
-      if (!executable) {
-        logger.info('terminal unavailable', { terminal: launcher.name });
-        continue;
-      }
-
-      try {
-        if (launcher.name === 'Ghostty') {
-          this.launchMacAppWithArgs('Ghostty.app', launcher.args(cwd, binaryPath));
-        } else {
-          this.launchTerminalProcess(executable, launcher.args(cwd, binaryPath));
-        }
-        return launcher.name;
-      } catch (error) {
-        logger.warn('terminal launch failed, trying next option', {
-          terminal: launcher.name,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    const scriptPath = join(cwd, 'run-gascii.command');
-    const script = [
-      '#!/bin/sh',
-      `cd ${this.shellQuote(cwd)}`,
-      this.shellQuote(binaryPath),
-      'exit_code=$?',
-      'printf "\\nGascii exited with code %s. Press Enter to close..." "$exit_code"',
-      'read _',
-      'exit "$exit_code"',
-      '',
-    ].join('\n');
-    spawnSync('/bin/sh', ['-lc', `umask 077; printf "%s" ${this.shellQuote(script)} > ${this.shellQuote(scriptPath)}; chmod 700 ${this.shellQuote(scriptPath)}`], {
-      stdio: 'ignore',
-    });
-
-    const result = spawnSync('open', ['-a', 'Terminal', scriptPath], {
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-
-    if (result.status !== 0) {
-      const detail = result.stderr.trim() || result.stdout.trim() || `exit code ${result.status}`;
-      throw new Error(`Terminal launch failed: ${detail}`);
-    }
-    return 'Terminal';
-  }
-
-  private launchInLinuxTerminal(cwd: string, binaryPath: string): string {
-    const candidates = [
-      process.env.TERMINAL,
-      'x-terminal-emulator',
-      'gnome-terminal',
-      'konsole',
-      'xfce4-terminal',
-    ].filter((item): item is string => Boolean(item));
-
-    for (const terminal of candidates) {
-      const executable = this.resolveExecutable(terminal, []);
-      if (!executable) {
-        continue;
-      }
-
-      try {
-        this.launchTerminalProcess(executable, ['-e', 'sh', '-lc', `cd ${this.shellQuote(cwd)} && ${this.shellQuote(binaryPath)}`]);
-        return terminal;
-      } catch (error) {
-        logger.warn('linux terminal launch failed, trying next option', {
-          terminal,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    throw new Error('No supported Linux terminal was found');
-  }
-
-  private launchMacAppWithArgs(appName: string, args: string[]): void {
-    const result = spawnSync('open', ['-na', appName, '--args', ...args], {
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-
-    if (result.error) {
-      throw new Error(`Ghostty launch failed: ${result.error.message}`);
-    }
-
-    if (result.status !== 0) {
-      const detail = result.stderr.trim() || result.stdout.trim() || `exit code ${result.status}`;
-      throw new Error(`Ghostty launch failed: ${detail}`);
-    }
-  }
-
-  private launchTerminalProcess(executable: string, args: string[]): ChildProcess {
-    const child = spawn(executable, args, {
-      detached: true,
-      stdio: 'ignore',
-    });
-
-    child.once('error', (error) => {
-      logger.error('terminal process failed after launch', error);
-    });
-    child.unref();
-
-    return child;
-  }
-
-  private resolveExecutable(executable: string, executablePaths: string[]): string | null {
-    for (const executablePath of executablePaths) {
-      if (executablePath && existsSync(executablePath)) {
-        return executablePath;
-      }
-    }
-
-    const result = spawnSync('/bin/sh', ['-lc', `command -v ${this.shellQuote(executable)}`], {
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-    const resolved = result.stdout.trim();
-
-    return result.status === 0 && resolved ? resolved : null;
-  }
-
-  private getAssetSuffix(): string {
-    if (platform() === 'darwin' && process.arch === 'arm64') {
-      return 'darwin-arm64.tar.gz';
-    }
-
-    if (platform() === 'linux' && process.arch === 'x64') {
-      return 'linux-x64.tar.gz';
-    }
-
-    throw new Error(`Unsupported platform: ${platform()} ${process.arch}`);
-  }
-
   private getBinaryPath(installPath: string): string {
     if (platform() === 'darwin') {
       return join(installPath, 'bin', 'gascii');
@@ -662,57 +415,6 @@ export class GasciiSeriesService {
     }
 
     throw new Error('Windows support is not ready yet');
-  }
-
-  private assertSupportedPlatform(): void {
-    if (platform() === 'win32') {
-      throw new Error('Windows support is not ready yet');
-    }
-
-    this.getAssetSuffix();
-  }
-
-  private parseReleaseVersion(tag: string): ReleaseVersion | null {
-    const match = /^v(\d+)\.(\d+)(?:\.(\d+))?$/.exec(tag);
-    if (!match) {
-      return null;
-    }
-
-    return {
-      tag,
-      parts: [Number(match[1]), Number(match[2]), Number(match[3] ?? 0)],
-    };
-  }
-
-  private parseTagFromReleaseUrl(url: string): string | null {
-    try {
-      const parsedUrl = new URL(url);
-      const match = /\/releases\/tag\/([^/]+)$/.exec(parsedUrl.pathname);
-      return match ? decodeURIComponent(match[1]) : null;
-    } catch {
-      return null;
-    }
-  }
-
-  private compareTags(left: string, right: string): number {
-    const leftVersion = this.parseReleaseVersion(left);
-    const rightVersion = this.parseReleaseVersion(right);
-
-    if (!leftVersion || !rightVersion) {
-      return 0;
-    }
-
-    return this.compareVersionParts(leftVersion.parts, rightVersion.parts);
-  }
-
-  private compareVersionParts(left: [number, number, number], right: [number, number, number]): number {
-    for (let index = 0; index < left.length; index += 1) {
-      if (left[index] !== right[index]) {
-        return left[index] - right[index];
-      }
-    }
-
-    return 0;
   }
 
   private emitInstall(
@@ -740,10 +442,6 @@ export class GasciiSeriesService {
       progress: step.progress,
       message,
     });
-  }
-
-  private shellQuote(value: string): string {
-    return `'${value.replace(/'/g, "'\\''")}'`;
   }
 
   private async pauseForSplashStep(): Promise<void> {

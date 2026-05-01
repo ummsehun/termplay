@@ -21,7 +21,9 @@ export class ArgumentBuilder {
     if (input.format === 'mp4') {
       args.push(
         '--format',
-        'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+        'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        '--merge-output-format',
+        'mp4'
       );
     } else if (input.format === 'mp3') {
       args.push(

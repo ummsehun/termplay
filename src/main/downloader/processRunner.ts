@@ -1,14 +1,15 @@
 import { spawn, ChildProcess } from 'child_process';
-import { ProgressParser, DownloadProgressEvent } from './progressParser';
+import { ProgressParser } from './progressParser';
 import fs from 'fs/promises';
 import path from 'path';
+import { type MediaDownloadProgress } from '@shared/launcherTypes';
 
 export interface ProcessRunnerOptions {
   jobId: string;
   binPath: string;
   args: string[];
   outputDir: string;
-  onProgress?: (event: DownloadProgressEvent) => void;
+  onProgress?: (event: MediaDownloadProgress) => void;
 }
 
 export type JobStatus = 'running' | 'completed' | 'cancelled' | 'failed';
@@ -18,6 +19,8 @@ export class ProcessRunner {
   private isCancelled = false;
   private jobId: string;
   private outputDir: string;
+  private stdoutBuffer = '';
+  private stderrBuffer = '';
 
   constructor(private options: ProcessRunnerOptions) {
     this.jobId = options.jobId;
@@ -33,27 +36,44 @@ export class ProcessRunner {
 
       let lastErrorLine = '';
 
-      const handleOutput = (data: Buffer) => {
-        const lines = data.toString('utf-8').split('\n');
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          
-          lastErrorLine = line; // keep track for error reporting
+      const handleLine = (line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
 
-          const parsed = ProgressParser.parseLine(line, this.jobId);
-          if (parsed && this.options.onProgress) {
-            this.options.onProgress(parsed);
-          }
+        lastErrorLine = trimmed;
+
+        const parsed = ProgressParser.parseLine(trimmed, this.jobId);
+        if (parsed && this.options.onProgress) {
+          this.options.onProgress(parsed);
         }
       };
 
-      this.child.stdout?.on('data', handleOutput);
-      this.child.stderr?.on('data', handleOutput);
+      const handleOutput = (streamName: 'stdout' | 'stderr', data: Buffer) => {
+        const text = (streamName === 'stdout' ? this.stdoutBuffer : this.stderrBuffer) + data.toString('utf-8');
+        const lines = text.split(/\r?\n/);
+        const nextBuffer = lines.pop() ?? '';
+
+        if (streamName === 'stdout') {
+          this.stdoutBuffer = nextBuffer;
+        } else {
+          this.stderrBuffer = nextBuffer;
+        }
+
+        for (const line of lines) {
+          handleLine(line);
+        }
+      };
+
+      this.child.stdout?.on('data', (data: Buffer) => handleOutput('stdout', data));
+      this.child.stderr?.on('data', (data: Buffer) => handleOutput('stderr', data));
 
       this.child.on('close', (code, signal) => {
+        handleLine(this.stdoutBuffer);
+        handleLine(this.stderrBuffer);
+        this.stdoutBuffer = '';
+        this.stderrBuffer = '';
+
         if (this.isCancelled) {
-          // If cancelled, we resolve normally or throw a specific cancel error?
-          // The caller handles 'cancelled' state. We can reject with a CancelError.
           reject(new Error('CANCELLED'));
           return;
         }
@@ -77,15 +97,17 @@ export class ProcessRunner {
 
     // Phase 7.6: SIGTERM -> Timeout -> SIGKILL
     this.child.kill('SIGTERM');
+    let didClose = false;
 
     const killTimeout = setTimeout(() => {
-      if (this.child && !this.child.killed) {
+      if (this.child && !didClose) {
         this.child.kill('SIGKILL');
       }
     }, 3000);
 
     return new Promise((resolve) => {
       this.child!.on('close', async () => {
+        didClose = true;
         clearTimeout(killTimeout);
         await this.cleanupTempFiles();
         resolve();

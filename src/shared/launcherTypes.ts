@@ -142,8 +142,32 @@ export type AssetDownloadProgress = {
   error?: string;
 };
 
-export type DownloadYoutubeRequest = {
+export type MediaDownloadFormat = 'mp4' | 'mp3';
+
+export type MediaDownloadStatus =
+  | 'pending'
+  | 'validating'
+  | 'running'
+  | 'postprocessing'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export type StartMediaDownloadRequest = {
   seriesId: TerminalSeriesId;
   url: string;
-  format: 'mp4' | 'mp3';
+  format: MediaDownloadFormat;
+  outputDir?: string;
+};
+
+export type MediaDownloadProgress = {
+  jobId: string;
+  status: MediaDownloadStatus;
+  percent?: number;
+  downloadedText?: string;
+  totalText?: string;
+  speedText?: string;
+  etaText?: string;
+  message?: string;
+  error?: string;
 };
