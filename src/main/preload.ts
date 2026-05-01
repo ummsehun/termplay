@@ -1,11 +1,17 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { gameIdSchema, type GameId } from '@shared/games';
+import { type GameId } from '@shared/games';
 import { IPC_CHANNELS } from '@shared/ipc';
-import { TerminalSeriesId, LauncherSettingKey } from '@shared/launcherTypes';
+import type {
+  TerminalSeriesId,
+  LauncherSettingKey,
+  LibraryDirKey,
+  GlobalSettingKey,
+  GlobalSettingValue,
+} from '@shared/launcherTypes';
 
 contextBridge.exposeInMainWorld('launcher', {
   game: {
-    launch: (gameId: GameId) => ipcRenderer.invoke(IPC_CHANNELS.launchGame, gameIdSchema.parse(gameId)),
+    launch: (gameId: GameId) => ipcRenderer.invoke(IPC_CHANNELS.launchGame, gameId),
     onStatusChanged: (callback: (event: unknown) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => callback(payload);
       ipcRenderer.on(IPC_CHANNELS.gameStatusChanged, listener);
@@ -19,15 +25,15 @@ contextBridge.exposeInMainWorld('launcher', {
     selectInstallPath: () => ipcRenderer.invoke(IPC_CHANNELS.launcher.selectInstallPath),
     setInstallPath: (seriesId: TerminalSeriesId, path: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.launcher.setInstallPath, { seriesId, path }),
-    setGlobalOption: (key: string, value: any) =>
+    setGlobalOption: <K extends GlobalSettingKey>(key: K, value: GlobalSettingValue<K>) =>
       ipcRenderer.invoke(IPC_CHANNELS.launcher.setGlobalOption, { key, value }),
     setSeriesOption: (seriesId: TerminalSeriesId, key: LauncherSettingKey, value: boolean) => 
       ipcRenderer.invoke(IPC_CHANNELS.launcher.setSeriesOption, { seriesId, key, value }),
   },
   library: {
     getDirSummary: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.launcher.getDirSummary, { seriesId }),
-    readDir: (seriesId: TerminalSeriesId, dir: string) => ipcRenderer.invoke(IPC_CHANNELS.launcher.readLibraryDir, { seriesId, dir }),
-    openDir: (seriesId: string, dir: string) => ipcRenderer.invoke(IPC_CHANNELS.launcher.openLibraryDir, { seriesId, dir }),
+    readDir: (seriesId: TerminalSeriesId, dir: LibraryDirKey) => ipcRenderer.invoke(IPC_CHANNELS.launcher.readLibraryDir, { seriesId, dir }),
+    openDir: (seriesId: TerminalSeriesId, dir: LibraryDirKey) => ipcRenderer.invoke(IPC_CHANNELS.launcher.openLibraryDir, { seriesId, dir }),
   },
   assets: {
     list: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.launcher.getAssetList, { seriesId }),
@@ -52,6 +58,9 @@ contextBridge.exposeInMainWorld('launcher', {
         ipcRenderer.off(IPC_CHANNELS.mediaDownload.progress, listener);
       };
     },
+  },
+  navigation: {
+    openExternal: (url: string) => ipcRenderer.invoke(IPC_CHANNELS.navigation.openExternal, { url }),
   },
   series: {
     getStatus: (seriesId: TerminalSeriesId) => ipcRenderer.invoke(IPC_CHANNELS.series.getStatus, { seriesId }),

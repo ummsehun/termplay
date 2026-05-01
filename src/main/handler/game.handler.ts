@@ -34,7 +34,7 @@ export const registerGameHandlers = (gameManager = createDefaultGameManager()): 
     if (!parsedGameId.success) {
       return {
         ok: false,
-        error: '알 수 없는 게임 실행 요청입니다.',
+        error: 'Invalid request',
       };
     }
 

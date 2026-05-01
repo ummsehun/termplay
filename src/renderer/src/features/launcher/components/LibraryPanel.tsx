@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTerminalSeriesStore } from '../../terminal-series/stores/terminalSeriesStore';
-import { getSeriesFeatureConfig, TerminalSeriesId } from '../../terminal-series/constants/seriesFeatureConfig';
+import { getSeriesFeatureConfig, TerminalSeriesId, LibraryDirKey } from '../../terminal-series/constants/seriesFeatureConfig';
 import { DirSummary, FileInfo } from '@shared/launcherTypes';
 import { Folder, File, FolderOpen, RefreshCw, Clock, AlertTriangle } from 'lucide-react';
 
@@ -24,7 +24,7 @@ export const LibraryPanel: React.FC = () => {
   const { t } = useTranslation();
   const { selectedSeriesId } = useTerminalSeriesStore();
   const config = getSeriesFeatureConfig(selectedSeriesId);
-  const [selectedDir, setSelectedDir] = useState<string | null>(null);
+  const [selectedDir, setSelectedDir] = useState<LibraryDirKey | null>(null);
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [summaries, setSummaries] = useState<DirSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -45,12 +45,12 @@ export const LibraryPanel: React.FC = () => {
     }
   };
 
-  const loadFiles = async (dir: string) => {
+  const loadFiles = async (dir: LibraryDirKey) => {
     if (!selectedSeriesId) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await window.launcher.library.readDir(selectedSeriesId, dir);
+      const result = await window.launcher.library.readDir(selectedSeriesId as TerminalSeriesId, dir);
       if (result.ok) {
         setFiles(result.data);
       } else {
@@ -85,7 +85,7 @@ export const LibraryPanel: React.FC = () => {
 
   const handleOpenNativeDir = async () => {
     if (!selectedDir) return;
-    const result = await window.launcher.library.openDir(selectedSeriesId, selectedDir);
+    const result = await window.launcher.library.openDir(selectedSeriesId as TerminalSeriesId, selectedDir);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -257,4 +257,3 @@ export const LibraryPanel: React.FC = () => {
     </div>
   );
 };
-

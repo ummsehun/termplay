@@ -72,6 +72,14 @@ export const LauncherPage: React.FC = () => {
     { icon: MessageSquare, url: '#' }
   ];
 
+  const openExternalLink = async (url: string) => {
+    if (url === '#') {
+      return;
+    }
+
+    await window.launcher.navigation.openExternal(url);
+  };
+
   return (
     <AppShell sidebar={<SeriesSidebar />}>
       {/* Immersive Background */}
@@ -88,7 +96,7 @@ export const LauncherPage: React.FC = () => {
         {socialLinks.map((item, idx) => (
           <button 
             key={idx} 
-            onClick={() => { if (item.url !== '#') window.open(item.url, '_blank'); }}
+            onClick={() => void openExternalLink(item.url)}
             className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center transition-all",
               item.url !== '#' 

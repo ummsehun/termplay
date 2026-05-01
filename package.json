@@ -1,5 +1,5 @@
 {
-  "name": "launcher",
+  "name": "termplay",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -21,7 +21,7 @@
     "react-dom": "^19.2.5",
     "react-i18next": "^17.0.6",
     "tailwind-merge": "^3.5.0",
-    "zod": "^4.3.6",
+    "zod": "^4.4.1",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
@@ -31,9 +31,9 @@
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.59.1",
     "@typescript-eslint/parser": "^8.59.1",
-    "electron": "^41.3.0",
+    "electron": "^41.4.0",
     "electron-vite": "^5.0.0",
-    "eslint": "^10.2.1",
+    "eslint": "^10.3.0",
     "eslint-plugin-import": "^2.32.0",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3",

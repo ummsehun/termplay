@@ -11,8 +11,10 @@ import {
   type LibraryDirKey,
   type TerminalSeriesId,
 } from '@shared/launcherTypes';
+import { libraryDirRequestSchema, seriesRequestSchema } from '@shared/launcherSchemas';
 import { createLogger } from '@shared/logger';
 import { launcherConfigRepo } from '../launcher/launcherConfigRepository';
+import { InputValidator } from '../downloader/inputValidator';
 
 const logger = createLogger('library-handler');
 
@@ -56,21 +58,27 @@ const getLibraryDirPath = (seriesId: TerminalSeriesId, installPath: string, dir:
 };
 
 export const registerLibraryHandlers = (): void => {
-  ipcMain.handle(IPC_CHANNELS.launcher.getDirSummary, async (_event, payload: { seriesId: TerminalSeriesId }): Promise<GetDirSummaryResponse> => {
+  ipcMain.handle(IPC_CHANNELS.launcher.getDirSummary, async (_event, payload: unknown): Promise<GetDirSummaryResponse> => {
+    const parsed = seriesRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+
     try {
-      const installPath = await getLibraryInstallPath(payload.seriesId);
+      const { seriesId } = parsed.data;
+      const installPath = await getLibraryInstallPath(seriesId);
       if (!installPath) {
         return { ok: true, data: [] };
       }
 
-      const dirsToCheck: LibraryDirKey[] = payload.seriesId === 'gascii'
+      const dirsToCheck: LibraryDirKey[] = seriesId === 'gascii'
         ? ['video', 'audio']
         : ['music', 'glb', 'camera', 'stage', 'vmd', 'pmx'];
 
       const summaries: DirSummary[] = [];
 
       for (const dirKey of dirsToCheck) {
-        const fullPath = getLibraryDirPath(payload.seriesId, installPath, dirKey);
+        const fullPath = getLibraryDirPath(seriesId, installPath, dirKey);
         let exists = false;
         let fileCount = 0;
         let sizeBytes = 0;
@@ -99,20 +107,27 @@ export const registerLibraryHandlers = (): void => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.launcher.readLibraryDir, async (_event, payload: { seriesId: TerminalSeriesId; dir: string }): Promise<ReadDirResponse> => {
+  ipcMain.handle(IPC_CHANNELS.launcher.readLibraryDir, async (_event, payload: unknown): Promise<ReadDirResponse> => {
+    const parsed = libraryDirRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+
     try {
-      const installPath = await getLibraryInstallPath(payload.seriesId);
+      const { seriesId, dir } = parsed.data;
+      const installPath = await getLibraryInstallPath(seriesId);
       if (!installPath) {
         return { ok: false, error: 'Install path not set' };
       }
 
-      const fullPath = getLibraryDirPath(payload.seriesId, installPath, payload.dir);
+      const fullPath = getLibraryDirPath(seriesId, installPath, dir);
       
       try {
         await fs.access(fullPath);
       } catch {
         return { ok: true, data: [] }; // Directory might not exist yet
       }
+      await InputValidator.assertRealOutputDir(installPath, fullPath);
 
       const files = await fs.readdir(fullPath);
       const fileInfos: FileInfo[] = [];
@@ -144,33 +159,40 @@ export const registerLibraryHandlers = (): void => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.launcher.openLibraryDir, async (event, payload: { seriesId: TerminalSeriesId; dir: string }) => {
+  ipcMain.handle(IPC_CHANNELS.launcher.openLibraryDir, async (event, payload: unknown) => {
+    const parsed = libraryDirRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+
     try {
-      logger.info(`openLibraryDir: ${payload.seriesId} -> ${payload.dir}`);
-      const installPath = await getLibraryInstallPath(payload.seriesId);
+      const { seriesId, dir } = parsed.data;
+      logger.info(`openLibraryDir: ${seriesId} -> ${dir}`);
+      const installPath = await getLibraryInstallPath(seriesId);
       if (!installPath) return { ok: false, error: 'Install path not set' };
 
-      const fullPath = getLibraryDirPath(payload.seriesId, installPath, payload.dir);
+      const fullPath = getLibraryDirPath(seriesId, installPath, dir);
       const relative = path.relative(installPath, fullPath);
       if (relative.startsWith('..') || path.isAbsolute(relative)) {
         return { ok: false, error: 'Invalid directory path' };
       }
 
       await fs.mkdir(fullPath, { recursive: true });
+      await InputValidator.assertRealOutputDir(installPath, fullPath);
 
-      if (payload.seriesId === 'gascii' && (payload.dir === 'video' || payload.dir === 'audio')) {
+      if (seriesId === 'gascii' && (dir === 'video' || dir === 'audio')) {
         const win = BrowserWindow.fromWebContents(event.sender);
-        const filters = payload.dir === 'video'
+        const filters = dir === 'video'
           ? [{ name: 'Video Files', extensions: ['mp4', 'mov', 'mkv', 'webm', 'avi'] }]
           : [{ name: 'Audio Files', extensions: ['mp3', 'wav', 'flac', 'm4a', 'aac', 'ogg'] }];
         const result = win
           ? await dialog.showOpenDialog(win, {
-              title: payload.dir === 'video' ? 'Add Gascii video files' : 'Add Gascii audio files',
+              title: dir === 'video' ? 'Add Gascii video files' : 'Add Gascii audio files',
               properties: ['openFile', 'multiSelections'],
               filters,
             })
           : await dialog.showOpenDialog({
-              title: payload.dir === 'video' ? 'Add Gascii video files' : 'Add Gascii audio files',
+              title: dir === 'video' ? 'Add Gascii video files' : 'Add Gascii audio files',
               properties: ['openFile', 'multiSelections'],
               filters,
             });
@@ -181,6 +203,7 @@ export const registerLibraryHandlers = (): void => {
 
         for (const filePath of result.filePaths) {
           const targetFilePath = await resolveUniqueFilePath(fullPath, path.basename(filePath));
+          await InputValidator.assertRealOutputDir(fullPath, targetFilePath);
           await fs.copyFile(filePath, targetFilePath, fsConstants.COPYFILE_EXCL);
         }
 

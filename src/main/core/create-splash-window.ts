@@ -1,6 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BrowserWindow, nativeTheme, type Event } from 'electron';
+import { configureWindowSecurity, isAllowedDevRendererUrl } from './window-security';
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 
@@ -15,18 +16,20 @@ export const createSplashWindow = (): BrowserWindow => {
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#050505' : '#ffffff',
     show: false,
     webPreferences: {
-      preload: join(currentDirectory, '../preload/preload.js'),
+      preload: join(currentDirectory, '../preload/preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
+
+  configureWindowSecurity(splashWindow);
 
   splashWindow.once('ready-to-show', () => {
     splashWindow.show();
   });
 
-  if (process.env.ELECTRON_RENDERER_URL) {
+  if (process.env.ELECTRON_RENDERER_URL && isAllowedDevRendererUrl(process.env.ELECTRON_RENDERER_URL)) {
     const url = new URL(process.env.ELECTRON_RENDERER_URL);
     url.searchParams.set('view', 'splash');
     void splashWindow.loadURL(url.toString());

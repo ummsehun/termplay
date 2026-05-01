@@ -4,12 +4,13 @@ import { parseReleaseVersion, parseTagFromReleaseUrl } from './gascii-version';
 const GAScii_OWNER = 'ummsehun';
 const GAScii_REPO = 'Gascii';
 const GITHUB_REPO_URL = `https://github.com/${GAScii_OWNER}/${GAScii_REPO}`;
-const LATEST_RELEASE_URL = `${GITHUB_REPO_URL}/releases/latest`;
+const LATEST_RELEASE_API_URL = `https://api.github.com/repos/${GAScii_OWNER}/${GAScii_REPO}/releases/latest`;
 
 export type GithubReleaseAsset = {
   name: string;
   browser_download_url: string;
   size?: number;
+  digest: string;
 };
 
 export type SelectedRelease = {
@@ -19,22 +20,27 @@ export type SelectedRelease = {
 
 export class GasciiReleaseResolver {
   async resolveLatestRelease(): Promise<SelectedRelease> {
-    const latestTag = await this.resolveLatestReleaseTag();
-    const version = parseReleaseVersion(latestTag);
+    const release = await this.fetchLatestRelease();
+    const version = parseReleaseVersion(release.tag_name);
     const platformAssetSuffix = this.getAssetSuffix();
 
     if (!version) {
-      throw new Error(`Unsupported Gascii release tag: ${latestTag}`);
+      throw new Error(`Unsupported Gascii release tag: ${release.tag_name}`);
     }
 
     const assetName = `gascii-${version.tag}-${platformAssetSuffix}`;
+    const asset = release.assets.find((candidate) => candidate.name === assetName);
+    if (!asset) {
+      throw new Error(`Gascii release asset not found: ${assetName}`);
+    }
+
+    if (!/^sha256:[a-f0-9]{64}$/i.test(asset.digest)) {
+      throw new Error(`Gascii release asset is missing a SHA-256 digest: ${assetName}`);
+    }
 
     return {
       tag: version.tag,
-      asset: {
-        name: assetName,
-        browser_download_url: `${GITHUB_REPO_URL}/releases/download/${version.tag}/${assetName}`,
-      },
+      asset,
     };
   }
 
@@ -58,11 +64,10 @@ export class GasciiReleaseResolver {
     this.getAssetSuffix();
   }
 
-  private async resolveLatestReleaseTag(): Promise<string> {
-    const response = await fetch(LATEST_RELEASE_URL, {
-      method: 'HEAD',
-      redirect: 'follow',
+  private async fetchLatestRelease(): Promise<{ tag_name: string; assets: GithubReleaseAsset[] }> {
+    const response = await fetch(LATEST_RELEASE_API_URL, {
       headers: {
+        Accept: 'application/vnd.github+json',
         'User-Agent': 'TermPlay',
       },
     });
@@ -71,28 +76,34 @@ export class GasciiReleaseResolver {
       throw new Error(`GitHub latest release lookup failed: HTTP ${response.status}`);
     }
 
-    const tag = parseTagFromReleaseUrl(response.url);
-    if (tag) {
-      return tag;
+    const data = await response.json() as {
+      tag_name?: unknown;
+      assets?: Array<{
+        name?: unknown;
+        browser_download_url?: unknown;
+        size?: unknown;
+        digest?: unknown;
+      }>;
+    };
+
+    if (typeof data.tag_name !== 'string' || !parseTagFromReleaseUrl(`${GITHUB_REPO_URL}/releases/tag/${data.tag_name}`)) {
+      throw new Error('GitHub latest release response did not include a valid tag');
     }
 
-    const fallbackResponse = await fetch(LATEST_RELEASE_URL, {
-      redirect: 'follow',
-      headers: {
-        'User-Agent': 'TermPlay',
-      },
-    });
-
-    if (!fallbackResponse.ok) {
-      throw new Error(`GitHub latest release lookup failed: HTTP ${fallbackResponse.status}`);
+    if (!Array.isArray(data.assets)) {
+      throw new Error('GitHub latest release response did not include assets');
     }
 
-    const fallbackTag = parseTagFromReleaseUrl(fallbackResponse.url);
-    if (!fallbackTag) {
-      throw new Error('Could not resolve latest Gascii release tag');
-    }
-
-    return fallbackTag;
+    return {
+      tag_name: data.tag_name,
+      assets: data.assets
+        .filter((asset): asset is GithubReleaseAsset =>
+          typeof asset.name === 'string' &&
+          typeof asset.browser_download_url === 'string' &&
+          typeof asset.digest === 'string' &&
+          (typeof asset.size === 'number' || typeof asset.size === 'undefined'),
+        ),
+    };
   }
 }
 

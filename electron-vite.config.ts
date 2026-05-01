@@ -23,7 +23,7 @@ export default defineConfig({
     build: {
       lib: {
         entry: resolve(__dirname, 'src/main/preload.ts'),
-        formats: ['es'],
+        formats: ['cjs'],
         fileName: () => 'index.js',
       },
       rollupOptions: {

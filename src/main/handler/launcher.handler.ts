@@ -1,6 +1,7 @@
 import { registerAssetHandlers } from './asset.handler';
 import { registerLibraryHandlers } from './library.handler';
 import { registerMediaDownloadHandlers } from './media-download.handler';
+import { registerNavigationHandlers } from './navigation.handler';
 import { registerSettingsHandlers } from './settings.handler';
 
 export const registerLauncherHandlers = (): void => {
@@ -8,4 +9,5 @@ export const registerLauncherHandlers = (): void => {
   registerLibraryHandlers();
   registerAssetHandlers();
   registerMediaDownloadHandlers();
+  registerNavigationHandlers();
 };

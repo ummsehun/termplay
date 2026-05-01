@@ -21,6 +21,9 @@ export const IPC_CHANNELS = {
     cancel: 'media-download:cancel',
     progress: 'media-download:progress',
   },
+  navigation: {
+    openExternal: 'navigation:open-external',
+  },
   series: {
     getStatus: 'series:get-status',
     install: 'series:install',

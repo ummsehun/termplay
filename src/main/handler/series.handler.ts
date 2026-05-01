@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain, shell } from 'electron';
 import { IPC_CHANNELS } from '@shared/ipc';
 import { type SeriesInstallProgress, type SeriesLaunchProgress, type TerminalSeriesId } from '@shared/launcherTypes';
+import { seriesRequestSchema } from '@shared/launcherSchemas';
 import { createLogger } from '@shared/logger';
 import { createSplashWindow, waitForSplashWindowReady } from '../core/create-splash-window';
 import { gasciiSeriesService } from '../services/gascii-series.service';
@@ -15,9 +16,14 @@ const assertGascii = (seriesId: TerminalSeriesId): void => {
 };
 
 export const registerSeriesHandlers = (): void => {
-  ipcMain.handle(IPC_CHANNELS.series.getStatus, async (_event, payload: { seriesId: TerminalSeriesId }) => {
+  ipcMain.handle(IPC_CHANNELS.series.getStatus, async (_event, payload: unknown) => {
+    const parsed = seriesRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+
     try {
-      assertGascii(payload.seriesId);
+      assertGascii(parsed.data.seriesId);
       return {
         ok: true,
         data: await gasciiSeriesService.getStatus(),
@@ -31,13 +37,18 @@ export const registerSeriesHandlers = (): void => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.series.install, async (event, payload: { seriesId: TerminalSeriesId }) => {
+  ipcMain.handle(IPC_CHANNELS.series.install, async (event, payload: unknown) => {
+    const parsed = seriesRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+    const { seriesId } = parsed.data;
     const sendProgress = (progress: SeriesInstallProgress): void => {
       event.sender.send(IPC_CHANNELS.series.installProgress, progress);
     };
 
     try {
-      assertGascii(payload.seriesId);
+      assertGascii(seriesId);
       const info = await gasciiSeriesService.install(sendProgress);
       return {
         ok: true,
@@ -47,7 +58,7 @@ export const registerSeriesHandlers = (): void => {
       const message = toErrorMessage(error);
       logger.error('install failed', error);
       sendProgress({
-        seriesId: payload.seriesId,
+        seriesId,
         stage: 'failed',
         progress: 100,
         message,
@@ -60,7 +71,12 @@ export const registerSeriesHandlers = (): void => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.series.launch, async (event, payload: { seriesId: TerminalSeriesId }) => {
+  ipcMain.handle(IPC_CHANNELS.series.launch, async (event, payload: unknown) => {
+    const parsed = seriesRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+    const { seriesId } = parsed.data;
     let splashWindow: BrowserWindow | null = null;
 
     const sendProgress = (progress: SeriesLaunchProgress): void => {
@@ -69,7 +85,7 @@ export const registerSeriesHandlers = (): void => {
     };
 
     try {
-      assertGascii(payload.seriesId);
+      assertGascii(seriesId);
       splashWindow = createSplashWindow();
       await waitForSplashWindowReady(splashWindow);
       const result = await gasciiSeriesService.launch(sendProgress);
@@ -88,7 +104,7 @@ export const registerSeriesHandlers = (): void => {
       const message = toErrorMessage(error);
       logger.error('launch failed', error);
       sendProgress({
-        seriesId: payload.seriesId,
+        seriesId,
         stage: 'failed',
         stepLabel: 'Launch failed',
         progress: 100,
@@ -102,9 +118,14 @@ export const registerSeriesHandlers = (): void => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.series.verify, async (_event, payload: { seriesId: TerminalSeriesId }) => {
+  ipcMain.handle(IPC_CHANNELS.series.verify, async (_event, payload: unknown) => {
+    const parsed = seriesRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+
     try {
-      assertGascii(payload.seriesId);
+      assertGascii(parsed.data.seriesId);
       return {
         ok: true,
         data: await gasciiSeriesService.verify(),
@@ -118,9 +139,14 @@ export const registerSeriesHandlers = (): void => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.series.remove, async (_event, payload: { seriesId: TerminalSeriesId }) => {
+  ipcMain.handle(IPC_CHANNELS.series.remove, async (_event, payload: unknown) => {
+    const parsed = seriesRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+
     try {
-      assertGascii(payload.seriesId);
+      assertGascii(parsed.data.seriesId);
       await gasciiSeriesService.remove();
       return {
         ok: true,
@@ -135,9 +161,14 @@ export const registerSeriesHandlers = (): void => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.series.revealInstallDir, async (_event, payload: { seriesId: TerminalSeriesId }) => {
+  ipcMain.handle(IPC_CHANNELS.series.revealInstallDir, async (_event, payload: unknown) => {
+    const parsed = seriesRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+
     try {
-      assertGascii(payload.seriesId);
+      assertGascii(parsed.data.seriesId);
       const status = await gasciiSeriesService.getStatus();
       if (!status.installPath) {
         throw new Error('Gascii is not installed');

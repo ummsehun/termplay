@@ -6,6 +6,11 @@ import {
   type SetSeriesOptionResponse,
   type TerminalSeriesId,
 } from '@shared/launcherTypes';
+import {
+  setGlobalOptionRequestSchema,
+  setInstallPathRequestSchema,
+  setSeriesOptionRequestSchema,
+} from '@shared/launcherSchemas';
 import { createLogger } from '@shared/logger';
 import { launcherConfigRepo } from '../launcher/launcherConfigRepository';
 import { gasciiSeriesService } from '../services/gascii-series.service';
@@ -46,12 +51,18 @@ export const registerSettingsHandlers = (): void => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.launcher.setInstallPath, async (_event, payload: { seriesId: TerminalSeriesId; path: string }) => {
+  ipcMain.handle(IPC_CHANNELS.launcher.setInstallPath, async (_event, payload: unknown) => {
+    const parsed = setInstallPathRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+
     try {
-      if (payload.seriesId === 'gascii') {
+      const request = parsed.data;
+      if (request.seriesId === 'gascii') {
         const gasciiInfo = await launcherConfigRepo.getGasciiInstallInfo();
         try {
-          await gasciiSeriesService.bindInstallPath(payload.path);
+          await gasciiSeriesService.bindInstallPath(request.path);
         } catch {
           if (gasciiInfo) {
             throw new Error('선택한 폴더에서 Gascii 실행 파일을 찾을 수 없습니다.');
@@ -60,17 +71,23 @@ export const registerSettingsHandlers = (): void => {
       }
 
       const config = await launcherConfigRepo.getConfig();
-      config.series[payload.seriesId].installPath = payload.path;
+      config.series[request.seriesId].installPath = request.path;
       await launcherConfigRepo.saveConfig(config);
-      return { ok: true, data: payload };
+      return { ok: true, data: request };
     } catch (error: any) {
       logger.error('setInstallPath failed', error);
       return { ok: false, error: error.message };
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.launcher.setSeriesOption, async (_event, request: SetSeriesOptionRequest): Promise<SetSeriesOptionResponse> => {
+  ipcMain.handle(IPC_CHANNELS.launcher.setSeriesOption, async (_event, payload: unknown): Promise<SetSeriesOptionResponse> => {
+    const parsed = setSeriesOptionRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+
     try {
+      const request: SetSeriesOptionRequest = parsed.data;
       const config = await launcherConfigRepo.getConfig();
       config.series[request.seriesId].options[request.key] = request.value;
       await launcherConfigRepo.saveConfig(config);
@@ -83,12 +100,22 @@ export const registerSettingsHandlers = (): void => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.launcher.setGlobalOption, async (_event, payload: { key: string; value: any }) => {
+  ipcMain.handle(IPC_CHANNELS.launcher.setGlobalOption, async (_event, payload: unknown) => {
+    const parsed = setGlobalOptionRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, error: 'Invalid request' };
+    }
+
     try {
+      const request = parsed.data;
       const config = await launcherConfigRepo.getConfig();
-      (config.global as any)[payload.key] = payload.value;
+      if (request.key === 'language') {
+        config.global.language = request.value;
+      } else {
+        config.global.autoUpdate = request.value;
+      }
       await launcherConfigRepo.saveConfig(config);
-      return { ok: true, data: payload };
+      return { ok: true, data: request };
     } catch (error: any) {
       logger.error('setGlobalOption failed', error);
       return { ok: false, error: error.message };

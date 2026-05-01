@@ -19,6 +19,9 @@ export type LauncherConfig = {
   }>;
 };
 
+export type GlobalSettingKey = keyof LauncherConfig['global'];
+export type GlobalSettingValue<K extends GlobalSettingKey> = LauncherConfig['global'][K];
+
 export type GasciiInstallInfo = {
   installedVersion: string;
   installPath: string;

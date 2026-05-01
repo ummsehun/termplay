@@ -2,6 +2,9 @@ import type { GameId, GameStatus } from '@shared/games';
 import type {
   GasciiInstallInfo,
   LauncherSettingKey,
+  LibraryDirKey,
+  GlobalSettingKey,
+  GlobalSettingValue,
   Result,
   SelectInstallPathResponse,
   SeriesInstallProgress,
@@ -40,17 +43,18 @@ declare global {
         get: () => Promise<Result<import('@shared/launcherTypes').LauncherConfig>>;
         selectInstallPath: () => Promise<SelectInstallPathResponse>;
         setInstallPath: (seriesId: TerminalSeriesId, path: string) => Promise<Result<{ seriesId: TerminalSeriesId; path: string }>>;
-        setGlobalOption: (key: string, value: any) => Promise<Result<{ key: string; value: any }>>;
+        setGlobalOption: <K extends GlobalSettingKey>(key: K, value: GlobalSettingValue<K>) => Promise<Result<{ key: K; value: GlobalSettingValue<K> }>>;
         setSeriesOption: (seriesId: TerminalSeriesId, key: LauncherSettingKey, value: boolean) => Promise<SetSeriesOptionResponse>;
       };
       library: {
         getDirSummary: (seriesId: TerminalSeriesId) => Promise<import('@shared/launcherTypes').GetDirSummaryResponse>;
-        openDir: (seriesId: string, dir: string) => Promise<Result<{ path: string; copiedCount: number }>>;
+        readDir: (seriesId: TerminalSeriesId, dir: LibraryDirKey) => Promise<import('@shared/launcherTypes').ReadDirResponse>;
+        openDir: (seriesId: TerminalSeriesId, dir: LibraryDirKey) => Promise<Result<{ path: string; copiedCount: number }>>;
       };
       assets: {
         list: (seriesId: TerminalSeriesId) => Promise<import('@shared/launcherTypes').GetAssetListResponse>;
-        download: (seriesId: TerminalSeriesId, assetId: string) => Promise<void>;
-        cancel: (downloadId: string) => Promise<void>;
+        download: (seriesId: TerminalSeriesId, assetId: string) => Promise<Result<{ downloadId: string }>>;
+        cancel: (downloadId: string) => Promise<Result<null>>;
         onProgress: (callback: (event: import('@shared/launcherTypes').AssetDownloadProgress) => void) => () => void;
       };
       mediaDownload: {
@@ -67,6 +71,9 @@ declare global {
         revealInstallDir: (seriesId: TerminalSeriesId) => Promise<Result<{ path: string }>>;
         onInstallProgress: (callback: (event: SeriesInstallProgress) => void) => () => void;
         onLaunchProgress: (callback: (event: SeriesLaunchProgress) => void) => () => void;
+      };
+      navigation: {
+        openExternal: (url: string) => Promise<Result<null>>;
       };
     };
   }

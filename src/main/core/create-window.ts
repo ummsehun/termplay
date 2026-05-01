@@ -1,6 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BrowserWindow } from 'electron';
+import { configureWindowSecurity, isAllowedDevRendererUrl } from './window-security';
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 
@@ -13,14 +14,16 @@ export const createMainWindow = (): BrowserWindow => {
     title: 'TermPlay',
     backgroundColor: '#09090b',
     webPreferences: {
-      preload: join(currentDirectory, '../preload/preload.js'),
+      preload: join(currentDirectory, '../preload/preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
 
-  if (process.env.ELECTRON_RENDERER_URL) {
+  configureWindowSecurity(mainWindow);
+
+  if (process.env.ELECTRON_RENDERER_URL && isAllowedDevRendererUrl(process.env.ELECTRON_RENDERER_URL)) {
     void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
     void mainWindow.loadFile(join(currentDirectory, '../renderer/index.html'));
