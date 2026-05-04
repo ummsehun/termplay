@@ -2,7 +2,6 @@ import fs from 'node:fs/promises';
 import {
   type GasciiInstallInfo,
   type SeriesInstallProgress,
-  type SeriesLaunchProgress,
   type SeriesStatusInfo,
   type SeriesVerifyResult,
 } from '@shared/launcherTypes';
@@ -16,27 +15,13 @@ import { gasciiInstaller } from './gascii-installer';
 import { gasciiIntegrityService } from './gascii-integrity';
 import { getGasciiBinaryPath, resolveGasciiInstallPath } from './gascii-paths';
 import { assertManagedInstallPath } from '../security/installPathPolicy';
+import { type LaunchProgressListener, SeriesLaunchProgressEmitter } from './series-launch-progress';
 
 const logger = createLogger('gascii-series-service');
 
 type InstallProgressListener = (event: SeriesInstallProgress) => void;
-type LaunchProgressListener = (event: SeriesLaunchProgress) => void;
 
 const LATEST_RELEASE_FAILURE_LOG_INTERVAL_MS = 5 * 60 * 1000;
-
-const LAUNCH_STEPS: Array<{
-  stage: SeriesLaunchProgress['stage'];
-  label: string;
-  progress: number;
-}> = [
-  { stage: 'resolving', label: 'Resolving app', progress: 8 },
-  { stage: 'checking-installation', label: 'Checking installation', progress: 22 },
-  { stage: 'checking-version', label: 'Checking version', progress: 36 },
-  { stage: 'verifying-binary', label: 'Verifying binary', progress: 50 },
-  { stage: 'preparing-permissions', label: 'Preparing permissions', progress: 64 },
-  { stage: 'preparing-terminal', label: 'Preparing terminal', progress: 80 },
-  { stage: 'launching', label: 'Launching', progress: 94 },
-];
 
 export class GasciiSeriesService {
   private lastLatestReleaseFailureLog: { key: string; loggedAt: number } | null = null;
@@ -139,44 +124,39 @@ export class GasciiSeriesService {
   }
 
   async launch(onProgress: LaunchProgressListener): Promise<{ terminal: string; binaryPath: string }> {
+    const progress = new SeriesLaunchProgressEmitter('gascii', onProgress);
     gasciiReleaseResolver.assertSupportedPlatform();
-    this.emitLaunch(onProgress, 0, 'Resolving Gascii launch request');
-    await this.pauseForSplashStep();
+    progress.emit(0, 'Resolving Gascii launch request');
+    await progress.pauseStep();
 
     const installed = await launcherConfigRepo.getGasciiInstallInfo();
-    this.emitLaunch(onProgress, 1, 'Checking installed files');
-    await this.pauseForSplashStep();
+    progress.emit(1, 'Checking installed files');
+    await progress.pauseStep();
     if (!installed) {
       throw new Error('Gascii is not installed');
     }
     const installPath = await assertManagedInstallPath('gascii', installed.installPath);
     const binaryPath = getGasciiBinaryPath(installPath);
 
-    this.emitLaunch(onProgress, 2, `Installed version: ${installed.installedVersion}`);
-    await this.pauseForSplashStep();
+    progress.emit(2, `Installed version: ${installed.installedVersion}`);
+    await progress.pauseStep();
 
-    this.emitLaunch(onProgress, 3, 'Verifying executable binary');
+    progress.emit(3, 'Verifying executable binary');
     await fs.access(binaryPath, fs.constants.X_OK);
     await gasciiIntegrityService.ensureAssetsReady(installPath);
-    await this.pauseForSplashStep();
+    await progress.pauseStep();
 
-    this.emitLaunch(onProgress, 4, 'Preparing executable permissions');
+    progress.emit(4, 'Preparing executable permissions');
     await gasciiInstaller.prepareBinaryPermissions(installPath, binaryPath);
-    await this.pauseForSplashStep();
+    await progress.pauseStep();
 
-    this.emitLaunch(onProgress, 5, 'Preparing external terminal');
-    await this.pauseForSplashStep();
+    progress.emit(5, 'Preparing external terminal');
+    await progress.pauseStep();
 
-    this.emitLaunch(onProgress, 6, 'Launching Gascii');
-    await this.pauseForSplashStep();
-    onProgress({
-      seriesId: 'gascii',
-      stage: 'completed',
-      stepLabel: 'Launching',
-      progress: 100,
-      message: 'Opening external terminal',
-    });
-    await this.pauseForSplashComplete();
+    progress.emit(6, 'Launching Gascii');
+    await progress.pauseStep();
+    progress.complete();
+    await progress.pauseComplete();
 
     const terminal = gasciiTerminalLauncher.launch(installPath, binaryPath);
 
@@ -256,28 +236,6 @@ export class GasciiSeriesService {
     });
   }
 
-  private emitLaunch(onProgress: LaunchProgressListener, stepIndex: number, message: string): void {
-    const step = LAUNCH_STEPS[stepIndex];
-    onProgress({
-      seriesId: 'gascii',
-      stage: step.stage,
-      stepLabel: step.label,
-      progress: step.progress,
-      message,
-    });
-  }
-
-  private async pauseForSplashStep(): Promise<void> {
-    await new Promise((resolve) => {
-      setTimeout(resolve, 260);
-    });
-  }
-
-  private async pauseForSplashComplete(): Promise<void> {
-    await new Promise((resolve) => {
-      setTimeout(resolve, 700);
-    });
-  }
 }
 
 export const gasciiSeriesService = new GasciiSeriesService();

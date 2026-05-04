@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release-desktop:
+    name: Release ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            runner: ubuntu-latest
+            script: release:linux
+          - platform: windows
+            runner: windows-latest
+            script: release:win
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          PACKAGE_VERSION="$(bun -e "const pkg = await Bun.file('package.json').json(); console.log(pkg.version)")"
+          EXPECTED_TAG="v${PACKAGE_VERSION}"
+
+          if [[ "${GITHUB_REF_NAME}" != "${EXPECTED_TAG}" ]]; then
+            echo "Release tag must match package.json version: ${EXPECTED_TAG}"
+            exit 1
+          fi
+
+      - name: Build and publish
+        run: bun run ${{ matrix.script }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

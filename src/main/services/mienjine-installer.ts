@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createWriteStream, existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
-import { basename, isAbsolute, join, posix, relative, resolve } from 'node:path';
+import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { platform } from 'node:os';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -11,6 +11,7 @@ import { createLogger } from '@shared/logger';
 import { launcherConfigRepo } from '../launcher/launcherConfigRepository';
 import { getMienjineStartScriptPath, MIENJINE_ASSET_DIRS, resolveMienjineInstallPath } from './mienjine-paths';
 import { type SelectedRelease } from './gascii-release-resolver';
+import { assertNoSymlinks, assertSafeTarArchiveEntries, verifySha256Digest } from './archive-install-utils';
 
 const logger = createLogger('mienjine-installer');
 
@@ -114,7 +115,7 @@ export class MienjineInstaller {
     });
 
     await pipeline(nodeStream, createWriteStream(archivePath));
-    this.verifyDigest(release.asset.digest, hash.digest('hex'));
+    verifySha256Digest(release.asset.digest, hash.digest('hex'));
   }
 
   private async extractArchive(
@@ -127,7 +128,7 @@ export class MienjineInstaller {
     this.emitInstall(onProgress, 'extracting', INSTALL_STAGES.extracting, 'Extracting archive');
     await fs.rm(stagingPath, { recursive: true, force: true });
     await fs.mkdir(stagingPath, { recursive: true });
-    this.assertSafeArchiveEntries(archivePath);
+    assertSafeTarArchiveEntries(archivePath);
 
     const result = spawnSync('tar', ['-xzf', archivePath, '-C', stagingPath], {
       encoding: 'utf8',
@@ -139,7 +140,7 @@ export class MienjineInstaller {
       throw new Error(`Archive extraction failed: ${detail}`);
     }
 
-    await this.assertNoSymlinks(stagingPath);
+    await assertNoSymlinks(stagingPath);
     const extractedRoot = await this.resolveExtractedRoot(stagingPath);
     await fs.rm(backupPath, { recursive: true, force: true });
 
@@ -182,63 +183,6 @@ export class MienjineInstaller {
     }
 
     throw new Error('Archive layout is not supported');
-  }
-
-  private verifyDigest(expectedDigest: string, actualHexDigest: string): void {
-    const expected = /^sha256:([a-f0-9]{64})$/i.exec(expectedDigest);
-    if (!expected) {
-      throw new Error('Release asset digest is not a supported SHA-256 digest');
-    }
-
-    if (expected[1].toLowerCase() !== actualHexDigest.toLowerCase()) {
-      throw new Error('Release asset digest verification failed');
-    }
-  }
-
-  private assertSafeArchiveEntries(archivePath: string): void {
-    const result = spawnSync('tar', ['-tzf', archivePath], {
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-
-    if (result.status !== 0) {
-      const detail = result.stderr.trim() || result.stdout.trim() || `exit code ${result.status}`;
-      throw new Error(`Archive listing failed: ${detail}`);
-    }
-
-    const entries = result.stdout.split(/\r?\n/).filter(Boolean);
-    if (entries.length === 0) {
-      throw new Error('Archive is empty');
-    }
-
-    for (const entry of entries) {
-      const normalized = posix.normalize(entry);
-      if (
-        entry.includes('\0') ||
-        normalized === '.' ||
-        normalized.startsWith('../') ||
-        normalized.includes('/../') ||
-        normalized.startsWith('/') ||
-        isAbsolute(entry) ||
-        /^[A-Za-z]:/.test(entry)
-      ) {
-        throw new Error(`Archive contains unsafe entry: ${entry}`);
-      }
-    }
-  }
-
-  private async assertNoSymlinks(rootPath: string): Promise<void> {
-    const entries = await fs.readdir(rootPath, { withFileTypes: true });
-    await Promise.all(entries.map(async (entry) => {
-      const entryPath = join(rootPath, entry.name);
-      if (entry.isSymbolicLink()) {
-        throw new Error(`Archive contains unsupported symbolic link: ${entry.name}`);
-      }
-
-      if (entry.isDirectory()) {
-        await this.assertNoSymlinks(entryPath);
-      }
-    }));
   }
 
   private async assertStartScriptInsideInstallPath(installPath: string): Promise<void> {

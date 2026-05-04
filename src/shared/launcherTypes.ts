@@ -82,6 +82,7 @@ export type SeriesLaunchStage =
   | 'failed';
 
 export type SeriesLaunchProgress = {
+  launchId?: string;
   seriesId: TerminalSeriesId;
   stage: SeriesLaunchStage;
   stepLabel: string;

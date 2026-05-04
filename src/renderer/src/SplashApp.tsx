@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import type { SeriesLaunchProgress } from '@shared/launcherTypes';
+import type { SeriesLaunchProgress, TerminalSeriesId } from '@shared/launcherTypes';
+
+const searchParams = new URLSearchParams(window.location.search);
+const expectedLaunchId = searchParams.get('launchId');
+const initialSeriesId = (searchParams.get('seriesId') === 'mienjine' ? 'mienjine' : 'gascii') satisfies TerminalSeriesId;
 
 const INITIAL_PROGRESS: SeriesLaunchProgress = {
-  seriesId: 'gascii',
+  launchId: expectedLaunchId ?? undefined,
+  seriesId: initialSeriesId,
   stage: 'resolving',
   stepLabel: 'Resolving app',
   progress: 0,
@@ -20,9 +25,11 @@ export const SplashApp: React.FC = () => {
     const onThemeChange = () => setIsDark(media.matches);
     media.addEventListener('change', onThemeChange);
     const unsubscribe = window.launcher.series.onLaunchProgress((event) => {
-      if (event.seriesId === 'gascii') {
-        setProgress(event);
+      if (expectedLaunchId && event.launchId !== expectedLaunchId) {
+        return;
       }
+
+      setProgress(event);
     });
 
     return () => {
@@ -40,7 +47,7 @@ export const SplashApp: React.FC = () => {
               TERMPLAY
             </div>
             <div className={['mt-4 text-[13px] font-semibold uppercase tracking-[0.45em]', isDark ? 'text-white/45' : 'text-neutral-500'].join(' ')}>
-              Gascii
+              {progress.seriesId}
             </div>
           </div>
         </div>

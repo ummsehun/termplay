@@ -3,7 +3,8 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { platform } from 'node:os';
 import { createLogger } from '@shared/logger';
-import { createGasciiSandboxCommand } from '../security/processSandbox';
+import { SERIES_DEFINITIONS } from './series-definitions';
+import { createSeriesLaunchCommand } from './series-launch-security';
 
 const logger = createLogger('gascii-terminal-launcher');
 
@@ -12,9 +13,12 @@ type TerminalLauncher = {
   executable: string;
   executablePaths: string[];
   args: (cwd: string, commandText: string) => string[];
+  appName?: string;
 };
 
 const shellQuote = (value: string): string => `'${value.replace(/'/g, "'\\''")}'`;
+const wrapCommand = (commandText: string): string =>
+  `${commandText}; exit_code=$?; printf "\\nGascii exited with code %s. Press Enter to close..." "$exit_code"; read _; exit "$exit_code"`;
 
 const MAC_TERMINAL_PRIORITY: TerminalLauncher[] = [
   {
@@ -24,7 +28,14 @@ const MAC_TERMINAL_PRIORITY: TerminalLauncher[] = [
       '/Applications/Ghostty.app/Contents/MacOS/ghostty',
       `${process.env.HOME ?? ''}/Applications/Ghostty.app/Contents/MacOS/ghostty`,
     ],
-    args: (cwd, commandText) => [`--working-directory=${cwd}`, '-e', 'sh', '-lc', `${commandText}; exit_code=$?; printf "\\nGascii exited with code %s. Press Enter to close..." "$exit_code"; read _; exit "$exit_code"`],
+    appName: 'Ghostty.app',
+    args: (cwd, commandText) => [`--working-directory=${cwd}`, '-e', 'sh', '-lc', wrapCommand(commandText)],
+  },
+  {
+    name: 'Terminal',
+    executable: 'open',
+    executablePaths: ['/usr/bin/open'],
+    args: () => [],
   },
   {
     name: 'kitty',
@@ -33,19 +44,19 @@ const MAC_TERMINAL_PRIORITY: TerminalLauncher[] = [
       '/Applications/kitty.app/Contents/MacOS/kitty',
       `${process.env.HOME ?? ''}/Applications/kitty.app/Contents/MacOS/kitty`,
     ],
-    args: (cwd, commandText) => ['--directory', cwd, '--start-as', 'fullscreen', 'sh', '-lc', `${commandText}; exit_code=$?; printf "\\nGascii exited with code %s. Press Enter to close..." "$exit_code"; read _; exit "$exit_code"`],
+    args: (cwd, commandText) => ['--directory', cwd, '--start-as', 'fullscreen', 'sh', '-lc', wrapCommand(commandText)],
   },
 ];
 
 export class GasciiTerminalLauncher {
   launch(cwd: string, binaryPath: string): string {
-    const sandbox = createGasciiSandboxCommand(cwd, binaryPath);
+    const launchCommand = createSeriesLaunchCommand(SERIES_DEFINITIONS.gascii, cwd, binaryPath);
 
     if (platform() === 'darwin') {
-      return this.launchInMacTerminalPriority(cwd, sandbox.commandText, sandbox.label);
+      return this.launchInMacTerminalPriority(cwd, launchCommand.commandText, launchCommand.label);
     }
 
-    return this.launchInLinuxTerminal(cwd, sandbox.commandText, sandbox.label);
+    return this.launchInLinuxTerminal(cwd, launchCommand.commandText, launchCommand.label);
   }
 
   private launchInMacTerminalPriority(cwd: string, commandText: string, sandboxLabel: string): string {
@@ -57,10 +68,15 @@ export class GasciiTerminalLauncher {
       }
 
       try {
-        if (launcher.name === 'Ghostty') {
-          this.launchMacAppWithArgs('Ghostty.app', launcher.args(cwd, commandText));
+        if (launcher.name === 'Terminal') {
+          this.launchDefaultTerminal(cwd, commandText);
+          this.requestMacFullscreen('Terminal');
+        } else if (launcher.appName) {
+          this.launchMacAppWithArgs(launcher.appName, launcher.args(cwd, commandText));
+          this.requestMacFullscreen(launcher.name === 'Ghostty' ? 'Ghostty' : launcher.name);
         } else {
           this.launchTerminalProcess(executable, launcher.args(cwd, commandText));
+          this.requestMacFullscreen(launcher.name);
         }
         return `${launcher.name} (${sandboxLabel})`;
       } catch (error) {
@@ -71,6 +87,10 @@ export class GasciiTerminalLauncher {
       }
     }
 
+    throw new Error('No supported macOS terminal was found');
+  }
+
+  private launchDefaultTerminal(cwd: string, commandText: string): void {
     const scriptPath = join(cwd, 'run-gascii.command');
     const script = [
       '#!/bin/sh',
@@ -95,7 +115,6 @@ export class GasciiTerminalLauncher {
       const detail = result.stderr.trim() || result.stdout.trim() || `exit code ${result.status}`;
       throw new Error(`Terminal launch failed: ${detail}`);
     }
-    return `Terminal (${sandboxLabel})`;
   }
 
   private launchInLinuxTerminal(cwd: string, commandText: string, sandboxLabel: string): string {
@@ -134,12 +153,30 @@ export class GasciiTerminalLauncher {
     });
 
     if (result.error) {
-      throw new Error(`Ghostty launch failed: ${result.error.message}`);
+      throw new Error(`${appName} launch failed: ${result.error.message}`);
     }
 
     if (result.status !== 0) {
       const detail = result.stderr.trim() || result.stdout.trim() || `exit code ${result.status}`;
-      throw new Error(`Ghostty launch failed: ${detail}`);
+      throw new Error(`${appName} launch failed: ${detail}`);
+    }
+  }
+
+  private requestMacFullscreen(appName: string): void {
+    const script = [
+      `tell application "${appName}" to activate`,
+      'delay 0.35',
+      'tell application "System Events" to keystroke "f" using {control down, command down}',
+    ].join('\n');
+
+    const result = spawnSync('osascript', ['-e', script], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    if (result.status !== 0) {
+      const detail = result.stderr.trim() || result.stdout.trim();
+      logger.warn('fullscreen request failed', { terminal: appName, detail });
     }
   }
 

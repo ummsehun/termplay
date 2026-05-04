@@ -1,7 +1,8 @@
 import { ipcMain } from 'electron';
 import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
+import { once } from 'events';
 import path from 'path';
 import { IPC_CHANNELS } from '@shared/ipc';
 import { createLogger } from '@shared/logger';
@@ -10,22 +11,14 @@ import { assetRequestSchema, cancelDownloadRequestSchema, downloadAssetRequestSc
 import { launcherConfigRepo } from '../launcher/launcherConfigRepository';
 import { InputValidator } from '../downloader/inputValidator';
 import { assertManagedInstallPath } from '../security/installPathPolicy';
+import { SERIES_ASSET_CATALOG } from '../services/series-definitions';
 
 const logger = createLogger('asset-handler');
 
 const activeDownloads = new Map<string, AbortController>();
 const MAX_ASSET_DOWNLOAD_BYTES = 2 * 1024 * 1024 * 1024;
-const dummyUrl = 'https://raw.githubusercontent.com/ummsehun/launcher/main/package.json';
-const MIENJINE_ASSETS: AssetInfo[] = [
-  { id: 'stage-default', name: 'Default Anime Stage.glb', type: 'Environment', sizeBytes: 12400000, fileName: 'Default Anime Stage.glb', targetDir: 'stage', downloadUrl: dummyUrl },
-  { id: 'model-base', name: 'Standard Character Base.pmx', type: 'Model', sizeBytes: 4200000, fileName: 'Standard Character Base.pmx', targetDir: 'pmx', downloadUrl: dummyUrl },
-  { id: 'music-bgm', name: 'Sample Background Track.mp3', type: 'Music', sizeBytes: 3100000, fileName: 'Sample Background Track.mp3', targetDir: 'music', downloadUrl: dummyUrl },
-  { id: 'anim-cam', name: 'Dynamic Camera Pan.vmd', type: 'Animation', sizeBytes: 150000, fileName: 'Dynamic Camera Pan.vmd', targetDir: 'vmd', downloadUrl: dummyUrl },
-];
-
 const getAssetsForSeries = (seriesId: TerminalSeriesId): AssetInfo[] => {
-  if (seriesId === 'mienjine') return MIENJINE_ASSETS;
-  return [];
+  return [...SERIES_ASSET_CATALOG[seriesId]];
 };
 
 export const registerAssetHandlers = (): void => {
@@ -87,6 +80,7 @@ export const registerAssetHandlers = (): void => {
         }
         let downloadedBytes = 0;
         let lastReportTime = 0;
+        const checksumHash = asset.checksum ? createHash('sha256') : null;
 
         fileStream = createWriteStream(tmpFilePath);
 
@@ -99,7 +93,10 @@ export const registerAssetHandlers = (): void => {
           if (done) break;
 
           if (value) {
-            fileStream.write(value);
+            checksumHash?.update(value);
+            if (!fileStream.write(value)) {
+              await once(fileStream, 'drain');
+            }
             downloadedBytes += value.length;
             if (downloadedBytes > MAX_ASSET_DOWNLOAD_BYTES) {
               throw new Error(`Asset download exceeded ${MAX_ASSET_DOWNLOAD_BYTES} bytes`);
@@ -116,8 +113,23 @@ export const registerAssetHandlers = (): void => {
           }
         }
 
-        fileStream.end();
+        await new Promise<void>((resolve, reject) => {
+          fileStream?.once('error', reject);
+          fileStream?.end(resolve);
+        });
         fileStream = null;
+
+        if (asset.checksum && checksumHash) {
+          event.sender.send(IPC_CHANNELS.launcher.onDownloadProgress, {
+            downloadId, assetId: request.assetId, status: 'verifying', progress: 100, downloadedBytes, totalBytes
+          });
+
+          const expectedChecksum = asset.checksum.replace(/^sha256:/i, '').toLowerCase();
+          const actualChecksum = checksumHash.digest('hex');
+          if (actualChecksum !== expectedChecksum) {
+            throw new Error(`Asset checksum mismatch: expected ${expectedChecksum}, got ${actualChecksum}`);
+          }
+        }
 
         await fs.rename(tmpFilePath, targetFilePath);
 

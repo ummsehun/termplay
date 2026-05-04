@@ -16,6 +16,7 @@ import { createLogger } from '@shared/logger';
 import { launcherConfigRepo } from '../launcher/launcherConfigRepository';
 import { InputValidator } from '../downloader/inputValidator';
 import { assertManagedInstallPath } from '../security/installPathPolicy';
+import { SERIES_DEFINITIONS } from '../services/series-definitions';
 
 const logger = createLogger('library-handler');
 
@@ -85,8 +86,8 @@ export const registerLibraryHandlers = (): void => {
       }
 
       const dirsToCheck: LibraryDirKey[] = seriesId === 'gascii'
-        ? ['video', 'audio']
-        : ['backup', 'camera', 'glb', 'music', 'pmx', 'stage', 'sync', 'vmd'];
+        ? [...SERIES_DEFINITIONS.gascii.libraryDirs]
+        : [...SERIES_DEFINITIONS.mienjine.libraryDirs];
 
       const summaries: DirSummary[] = [];
 

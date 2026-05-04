@@ -5,7 +5,12 @@ import { configureWindowSecurity, isAllowedDevRendererUrl } from './window-secur
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 
-export const createSplashWindow = (): BrowserWindow => {
+type SplashWindowOptions = {
+  launchId: string;
+  seriesId: string;
+};
+
+export const createSplashWindow = (options?: SplashWindowOptions): BrowserWindow => {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { x, y, width, height } = primaryDisplay.bounds;
 
@@ -43,10 +48,19 @@ export const createSplashWindow = (): BrowserWindow => {
   if (process.env.ELECTRON_RENDERER_URL && isAllowedDevRendererUrl(process.env.ELECTRON_RENDERER_URL)) {
     const url = new URL(process.env.ELECTRON_RENDERER_URL);
     url.searchParams.set('view', 'splash');
+    if (options) {
+      url.searchParams.set('launchId', options.launchId);
+      url.searchParams.set('seriesId', options.seriesId);
+    }
     void splashWindow.loadURL(url.toString());
   } else {
+    const query: Record<string, string> = { view: 'splash' };
+    if (options) {
+      query.launchId = options.launchId;
+      query.seriesId = options.seriesId;
+    }
     void splashWindow.loadFile(join(currentDirectory, '../renderer/index.html'), {
-      query: { view: 'splash' },
+      query,
     });
   }
 

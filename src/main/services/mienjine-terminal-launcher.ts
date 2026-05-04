@@ -2,6 +2,8 @@ import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createLogger } from '@shared/logger';
+import { SERIES_DEFINITIONS } from './series-definitions';
+import { createSeriesLaunchCommand } from './series-launch-security';
 
 const logger = createLogger('mienjine-terminal-launcher');
 
@@ -47,8 +49,8 @@ const MAC_TERMINAL_PRIORITY: TerminalLauncher[] = [
 
 export class MienjineTerminalLauncher {
   launch(cwd: string, startScriptPath: string): string {
-    const commandText = `cd ${shellQuote(cwd)} && ${shellQuote(startScriptPath)}`;
-    return this.launchInMacTerminalPriority(cwd, commandText, 'direct');
+    const launchCommand = createSeriesLaunchCommand(SERIES_DEFINITIONS.mienjine, cwd, startScriptPath);
+    return this.launchInMacTerminalPriority(cwd, launchCommand.commandText, launchCommand.label);
   }
 
   private launchInMacTerminalPriority(cwd: string, commandText: string, sandboxLabel: string): string {
@@ -62,10 +64,13 @@ export class MienjineTerminalLauncher {
       try {
         if (launcher.name === 'Terminal') {
           this.launchDefaultTerminal(cwd, commandText);
+          this.requestMacFullscreen('Terminal');
         } else if (launcher.appName) {
           this.launchMacAppWithArgs(launcher.appName, launcher.args(cwd, commandText));
+          this.requestMacFullscreen(launcher.name === 'Ghostty' ? 'Ghostty' : launcher.name);
         } else {
           this.launchTerminalProcess(executable, launcher.args(cwd, commandText));
+          this.requestMacFullscreen(launcher.name);
         }
         return `${launcher.name} (${sandboxLabel})`;
       } catch (error) {
@@ -120,6 +125,24 @@ export class MienjineTerminalLauncher {
     if (result.status !== 0) {
       const detail = result.stderr.trim() || result.stdout.trim() || `exit code ${result.status}`;
       throw new Error(`${appName} launch failed: ${detail}`);
+    }
+  }
+
+  private requestMacFullscreen(appName: string): void {
+    const script = [
+      `tell application "${appName}" to activate`,
+      'delay 0.35',
+      'tell application "System Events" to keystroke "f" using {control down, command down}',
+    ].join('\n');
+
+    const result = spawnSync('osascript', ['-e', script], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    if (result.status !== 0) {
+      const detail = result.stderr.trim() || result.stdout.trim();
+      logger.warn('fullscreen request failed', { terminal: appName, detail });
     }
   }
 

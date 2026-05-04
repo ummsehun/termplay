@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { BrowserWindow, ipcMain, shell } from 'electron';
 import { IPC_CHANNELS } from '@shared/ipc';
 import { type SeriesInstallProgress, type SeriesLaunchProgress, type TerminalSeriesId } from '@shared/launcherTypes';
@@ -9,6 +10,18 @@ import { mienjineSeriesService } from '../services/mienjine-series.service';
 import { toErrorMessage } from '../utils/error';
 
 const logger = createLogger('series-handler');
+
+const closeWindowLater = (window: BrowserWindow | null, delayMs: number): void => {
+  if (!window) {
+    return;
+  }
+
+  setTimeout(() => {
+    if (!window.isDestroyed()) {
+      window.close();
+    }
+  }, delayMs);
+};
 
 const getSeriesService = (seriesId: TerminalSeriesId): typeof gasciiSeriesService | typeof mienjineSeriesService => {
   if (seriesId === 'gascii') {
@@ -78,23 +91,20 @@ export const registerSeriesHandlers = (): void => {
       return { ok: false, error: 'Invalid request' };
     }
     const { seriesId } = parsed.data;
+    const launchId = randomUUID();
     let splashWindow: BrowserWindow | null = null;
 
     const sendProgress = (progress: SeriesLaunchProgress): void => {
-      event.sender.send(IPC_CHANNELS.series.launchProgress, progress);
-      splashWindow?.webContents.send(IPC_CHANNELS.series.launchProgress, progress);
+      const progressWithLaunchId = { ...progress, launchId };
+      event.sender.send(IPC_CHANNELS.series.launchProgress, progressWithLaunchId);
+      splashWindow?.webContents.send(IPC_CHANNELS.series.launchProgress, progressWithLaunchId);
     };
 
     try {
-      splashWindow = createSplashWindow();
+      splashWindow = createSplashWindow({ launchId, seriesId });
       await waitForSplashWindowReady(splashWindow);
       const result = await getSeriesService(seriesId).launch(sendProgress);
-      const windowToClose = splashWindow;
-      setTimeout(() => {
-        if (!windowToClose.isDestroyed()) {
-          windowToClose.close();
-        }
-      }, 650);
+      closeWindowLater(splashWindow, 650);
 
       return {
         ok: true,
@@ -111,6 +121,7 @@ export const registerSeriesHandlers = (): void => {
         message,
         error: message,
       });
+      closeWindowLater(splashWindow, 4500);
       return {
         ok: false,
         error: message,
