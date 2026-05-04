@@ -1,13 +1,13 @@
 import { z } from 'zod';
 
 export const terminalSeriesIdSchema = z.enum(['gascii', 'mienjine']);
-export const libraryDirKeySchema = z.enum(['video', 'audio', 'music', 'glb', 'camera', 'stage', 'vmd', 'pmx']);
+export const libraryDirKeySchema = z.enum(['video', 'audio', 'backup', 'camera', 'glb', 'music', 'pmx', 'stage', 'sync', 'vmd']);
 export const launcherSettingKeySchema = z.enum(['hwAccel', 'autoClean', 'highRes', 'physics']);
 export const mediaDownloadFormatSchema = z.enum(['mp4', 'mp3']);
 
 export const allowedLibraryDirsBySeries = {
   gascii: ['video', 'audio'],
-  mienjine: ['music', 'glb', 'camera', 'stage', 'vmd', 'pmx'],
+  mienjine: ['backup', 'camera', 'glb', 'music', 'pmx', 'stage', 'sync', 'vmd'],
 } as const satisfies Record<z.infer<typeof terminalSeriesIdSchema>, Array<z.infer<typeof libraryDirKeySchema>>>;
 
 export const isAllowedLibraryDir = (

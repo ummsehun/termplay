@@ -2,7 +2,7 @@ import { app } from 'electron';
 import path from 'path';
 import ElectronStore from 'electron-store';
 import { createLogger } from '@shared/logger';
-import { GasciiInstallInfo, LauncherConfig, SeriesRuntimeState } from '@shared/launcherTypes';
+import { GasciiInstallInfo, LauncherConfig, MienjineInstallInfo, SeriesRuntimeState } from '@shared/launcherTypes';
 
 const logger = createLogger('launcher-config-repo');
 
@@ -119,6 +119,21 @@ export class LauncherConfigRepository {
   async clearGasciiInstallInfo(): Promise<void> {
     await this.ensureDefaultConfig();
     this.getStore().delete('runtime.gascii');
+  }
+
+  async getMienjineInstallInfo(): Promise<MienjineInstallInfo | null> {
+    await this.ensureDefaultConfig();
+    return this.getStore().get('runtime.mienjine') ?? null;
+  }
+
+  async setMienjineInstallInfo(info: MienjineInstallInfo): Promise<void> {
+    await this.ensureDefaultConfig();
+    this.getStore().set('runtime.mienjine', info);
+  }
+
+  async clearMienjineInstallInfo(): Promise<void> {
+    await this.ensureDefaultConfig();
+    this.getStore().delete('runtime.mienjine');
   }
 }
 

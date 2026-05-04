@@ -107,9 +107,9 @@ export const LauncherPage: React.FC = () => {
           />
         )}
         {/* Overlay so left-side UI remains readable */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent pointer-events-none" />
         {/* Bottom vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
       </div>
 
       {/* Floating Right Social Toolbar */}

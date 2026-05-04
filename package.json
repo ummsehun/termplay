@@ -9,7 +9,8 @@
     "build": "tsc --noEmit && electron-vite build --config electron-vite.config.ts",
     "preview": "electron-vite preview --config electron-vite.config.ts",
     "typecheck": "tsc --noEmit",
-    "security:attack": "bun scripts/security-attack-smoke.ts"
+    "security:attack": "bun scripts/security-attack-smoke.ts",
+    "security:sandbox": "bun scripts/security-sandbox-probe.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

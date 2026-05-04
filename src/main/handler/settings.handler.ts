@@ -15,6 +15,7 @@ import { createLogger } from '@shared/logger';
 import { launcherConfigRepo } from '../launcher/launcherConfigRepository';
 import { assertManagedInstallPath } from '../security/installPathPolicy';
 import { gasciiSeriesService } from '../services/gascii-series.service';
+import { mienjineSeriesService } from '../services/mienjine-series.service';
 
 const logger = createLogger('settings-handler');
 
@@ -23,8 +24,12 @@ export const registerSettingsHandlers = (): void => {
     try {
       const config = await launcherConfigRepo.getConfig();
       const gasciiInfo = await launcherConfigRepo.getGasciiInstallInfo();
+      const mienjineInfo = await launcherConfigRepo.getMienjineInstallInfo();
       if (gasciiInfo?.installPath) {
         config.series.gascii.installPath = gasciiInfo.installPath;
+      }
+      if (mienjineInfo?.installPath) {
+        config.series.mienjine.installPath = mienjineInfo.installPath;
       }
       return { ok: true, data: config };
     } catch (error: any) {
@@ -66,6 +71,15 @@ export const registerSettingsHandlers = (): void => {
         try {
           const gasciiInfo = await gasciiSeriesService.bindInstallPath(request.path);
           installPath = gasciiInfo.installPath;
+        } catch {
+          // Managed empty install destinations are allowed; existing installs are bound when valid.
+        }
+      }
+
+      if (request.seriesId === 'mienjine') {
+        try {
+          const mienjineInfo = await mienjineSeriesService.bindInstallPath(request.path);
+          installPath = mienjineInfo.installPath;
         } catch {
           // Managed empty install destinations are allowed; existing installs are bound when valid.
         }

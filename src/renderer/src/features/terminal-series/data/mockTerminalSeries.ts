@@ -49,10 +49,10 @@ export const mockTerminalSeries: TerminalSeries[] = [
     name: 'mienjine',
     displayName: 'MiEnjine',
     description: 'Advanced terminal-based engine or execution environment. Run full applications within terminal emulator constraints.',
-    repositoryUrl: 'https://github.com/example/mienjine',
+    repositoryUrl: 'https://github.com/ummsehun/mienjine',
     status: 'not-installed',
     installedVersion: null,
-    latestVersion: 'v1.2.0',
+    latestVersion: 'v0.1.5',
     installPath: null,
     runtimeRequirements: ['Rust (Cargo)'],
     assets: [

@@ -140,7 +140,7 @@ export const LibraryPanel: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#0a0a0a]">
         {/* Top bar */}
-        <div className="h-[76px] border-b border-white/5 flex items-center justify-between px-8 bg-[#111111]/80 backdrop-blur-md z-10 shrink-0">
+        <div className="h-[76px] border-b border-white/5 flex items-center justify-between pl-8 pr-20 bg-[#111111]/80 backdrop-blur-md z-10 shrink-0">
           <div className="flex items-center gap-4">
             <h3 className="text-xl font-bold text-white uppercase tracking-widest flex items-center gap-3">
               {selectedDir || 'Directory'}
@@ -215,26 +215,26 @@ export const LibraryPanel: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-[#111111] rounded-2xl border border-white/5 shadow-xl">
-              <table className="w-full text-left border-collapse">
+            <div className="bg-[#111111] rounded-2xl border border-white/5 shadow-xl overflow-hidden">
+              <table className="w-full text-left border-collapse table-fixed">
                 <thead>
                   <tr className="border-b border-white/5 bg-white/[0.02]">
                     <th className="py-4 px-6 text-[11px] font-bold text-white/40 uppercase tracking-widest w-[50%]">{t('launcher.feature_modal.library.name', 'Name')}</th>
-                    <th className="py-4 px-6 text-[11px] font-bold text-white/40 uppercase tracking-widest">{t('launcher.feature_modal.library.date_modified', 'Date Modified')}</th>
-                    <th className="py-4 px-6 text-[11px] font-bold text-white/40 uppercase tracking-widest text-right">{t('launcher.feature_modal.library.size', 'Size')}</th>
+                    <th className="py-4 px-6 text-[11px] font-bold text-white/40 uppercase tracking-widest w-[25%]">{t('launcher.feature_modal.library.date_modified', 'Date Modified')}</th>
+                    <th className="py-4 px-6 text-[11px] font-bold text-white/40 uppercase tracking-widest text-right w-[25%]">{t('launcher.feature_modal.library.size', 'Size')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {files.map((file, idx) => (
                     <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
                       <td className="py-4 px-6">
-                        <div className="flex items-center gap-4 overflow-hidden">
+                        <div className="flex items-center gap-4 min-w-0">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors shadow-sm ${
                             file.isDirectory ? 'bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20' : 'bg-[#222] text-white/50 group-hover:bg-[#333]'
                           }`}>
                             {file.isDirectory ? <Folder size={20} /> : <File size={20} />}
                           </div>
-                          <span className="text-[14px] text-white/90 truncate font-medium group-hover:text-white transition-colors">{file.name}</span>
+                          <span className="text-[14px] text-white/90 truncate font-medium group-hover:text-white transition-colors block">{file.name}</span>
                         </div>
                       </td>
                       <td className="py-4 px-6 text-[13px] text-white/50 whitespace-nowrap">

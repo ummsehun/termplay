@@ -51,13 +51,21 @@ const getLibraryInstallPath = async (seriesId: TerminalSeriesId): Promise<string
     }
   }
 
+  if (seriesId === 'mienjine') {
+    const mienjineInfo = await launcherConfigRepo.getMienjineInstallInfo();
+    if (mienjineInfo?.installPath) {
+      installPath = mienjineInfo.installPath;
+      return assertManagedInstallPath(seriesId, installPath);
+    }
+  }
+
   const config = await launcherConfigRepo.getConfig();
   installPath = config.series[seriesId].installPath;
   return installPath ? assertManagedInstallPath(seriesId, installPath) : '';
 };
 
 const getLibraryDirPath = (seriesId: TerminalSeriesId, installPath: string, dir: string): string => {
-  return seriesId === 'gascii'
+  return seriesId === 'gascii' || seriesId === 'mienjine'
     ? path.join(installPath, 'assets', dir)
     : path.join(installPath, dir);
 };
@@ -78,7 +86,7 @@ export const registerLibraryHandlers = (): void => {
 
       const dirsToCheck: LibraryDirKey[] = seriesId === 'gascii'
         ? ['video', 'audio']
-        : ['music', 'glb', 'camera', 'stage', 'vmd', 'pmx'];
+        : ['backup', 'camera', 'glb', 'music', 'pmx', 'stage', 'sync', 'vmd'];
 
       const summaries: DirSummary[] = [];
 

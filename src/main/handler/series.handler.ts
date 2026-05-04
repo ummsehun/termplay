@@ -5,14 +5,17 @@ import { seriesRequestSchema } from '@shared/launcherSchemas';
 import { createLogger } from '@shared/logger';
 import { createSplashWindow, waitForSplashWindowReady } from '../core/create-splash-window';
 import { gasciiSeriesService } from '../services/gascii-series.service';
+import { mienjineSeriesService } from '../services/mienjine-series.service';
 import { toErrorMessage } from '../utils/error';
 
 const logger = createLogger('series-handler');
 
-const assertGascii = (seriesId: TerminalSeriesId): void => {
-  if (seriesId !== 'gascii') {
-    throw new Error(`${seriesId} is still using mock lifecycle`);
+const getSeriesService = (seriesId: TerminalSeriesId): typeof gasciiSeriesService | typeof mienjineSeriesService => {
+  if (seriesId === 'gascii') {
+    return gasciiSeriesService;
   }
+
+  return mienjineSeriesService;
 };
 
 export const registerSeriesHandlers = (): void => {
@@ -23,10 +26,9 @@ export const registerSeriesHandlers = (): void => {
     }
 
     try {
-      assertGascii(parsed.data.seriesId);
       return {
         ok: true,
-        data: await gasciiSeriesService.getStatus(),
+        data: await getSeriesService(parsed.data.seriesId).getStatus(),
       };
     } catch (error) {
       logger.error('getStatus failed', error);
@@ -48,8 +50,7 @@ export const registerSeriesHandlers = (): void => {
     };
 
     try {
-      assertGascii(seriesId);
-      const info = await gasciiSeriesService.install(sendProgress);
+      const info = await getSeriesService(seriesId).install(sendProgress);
       return {
         ok: true,
         data: info,
@@ -85,10 +86,9 @@ export const registerSeriesHandlers = (): void => {
     };
 
     try {
-      assertGascii(seriesId);
       splashWindow = createSplashWindow();
       await waitForSplashWindowReady(splashWindow);
-      const result = await gasciiSeriesService.launch(sendProgress);
+      const result = await getSeriesService(seriesId).launch(sendProgress);
       const windowToClose = splashWindow;
       setTimeout(() => {
         if (!windowToClose.isDestroyed()) {
@@ -125,10 +125,9 @@ export const registerSeriesHandlers = (): void => {
     }
 
     try {
-      assertGascii(parsed.data.seriesId);
       return {
         ok: true,
-        data: await gasciiSeriesService.verify(),
+        data: await getSeriesService(parsed.data.seriesId).verify(),
       };
     } catch (error) {
       logger.error('verify failed', error);
@@ -146,8 +145,7 @@ export const registerSeriesHandlers = (): void => {
     }
 
     try {
-      assertGascii(parsed.data.seriesId);
-      await gasciiSeriesService.remove();
+      await getSeriesService(parsed.data.seriesId).remove();
       return {
         ok: true,
         data: null,
@@ -168,10 +166,9 @@ export const registerSeriesHandlers = (): void => {
     }
 
     try {
-      assertGascii(parsed.data.seriesId);
-      const status = await gasciiSeriesService.getStatus();
+      const status = await getSeriesService(parsed.data.seriesId).getStatus();
       if (!status.installPath) {
-        throw new Error('Gascii is not installed');
+        throw new Error(`${parsed.data.seriesId} is not installed`);
       }
 
       const error = await shell.openPath(status.installPath);

@@ -1,6 +1,6 @@
 export type TerminalSeriesId = 'gascii' | 'mienjine';
 export type AssetMode = 'youtube' | 'asset-list';
-export type LibraryDirKey = 'video' | 'audio' | 'music' | 'glb' | 'camera' | 'stage' | 'vmd' | 'pmx';
+export type LibraryDirKey = 'video' | 'audio' | 'backup' | 'camera' | 'glb' | 'music' | 'pmx' | 'stage' | 'sync' | 'vmd';
 export type LauncherSettingKey = 'hwAccel' | 'autoClean' | 'highRes' | 'physics';
 
 export type Result<T, E = string> =
@@ -29,8 +29,11 @@ export type GasciiInstallInfo = {
   lastInstalledAt: string;
 };
 
+export type MienjineInstallInfo = GasciiInstallInfo;
+
 export type SeriesRuntimeState = {
   gascii?: GasciiInstallInfo;
+  mienjine?: MienjineInstallInfo;
 };
 
 export type SeriesStatusInfo = {

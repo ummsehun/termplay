@@ -122,14 +122,15 @@ export class MediaDownloadService {
   private async resolveOutputDir(request: StartMediaDownloadRequest): Promise<string> {
     const config = await launcherConfigRepo.getConfig();
     const gasciiInfo = request.seriesId === 'gascii' ? await launcherConfigRepo.getGasciiInstallInfo() : null;
-    const configuredInstallPath = gasciiInfo?.installPath ?? config.series[request.seriesId]?.installPath;
+    const mienjineInfo = request.seriesId === 'mienjine' ? await launcherConfigRepo.getMienjineInstallInfo() : null;
+    const configuredInstallPath = gasciiInfo?.installPath ?? mienjineInfo?.installPath ?? config.series[request.seriesId]?.installPath;
 
     if (!configuredInstallPath) {
       throw new Error('Install path not set');
     }
 
     const installPath = await assertManagedInstallPath(request.seriesId, configuredInstallPath);
-    const allowedRoot = request.seriesId === 'gascii'
+    const allowedRoot = request.seriesId === 'gascii' || request.seriesId === 'mienjine'
       ? path.resolve(installPath, 'assets')
       : path.resolve(installPath);
     await fs.mkdir(allowedRoot, { recursive: true });

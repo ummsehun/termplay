@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -10,6 +10,14 @@ export type ModalShellProps = {
 export const ModalShell: React.FC<ModalShellProps> = ({ onClose, children }) => {
   const { t } = useTranslation();
   
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
   return (
     <div 
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-8 sm:p-12 md:p-16 lg:p-24"

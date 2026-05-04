@@ -12,9 +12,9 @@ const shellQuote = (value: string): string => `'${value.replace(/'/g, "'\\''")}'
 const firstExistingPath = (paths: string[]): string | null => paths.find((candidate) => existsSync(candidate)) ?? null;
 const commandExists = (commandPath: string): boolean => existsSync(commandPath);
 
-const writeMacSandboxProfile = (cwd: string): string => {
+const writeMacSandboxProfile = (cwd: string, appName: string): string => {
   const sandboxDir = join(cwd, '.termplay-sandbox');
-  const profilePath = join(sandboxDir, 'gascii.sb');
+  const profilePath = join(sandboxDir, `${appName.toLowerCase()}.sb`);
 
   mkdirSync(sandboxDir, { recursive: true, mode: 0o700 });
   writeFileSync(profilePath, [
@@ -41,12 +41,16 @@ const writeMacSandboxProfile = (cwd: string): string => {
   return profilePath;
 };
 
-const createMacSandboxCommand = (cwd: string, binaryPath: string): SandboxedLaunchCommand => {
+const createMacSandboxCommand = (cwd: string, binaryPath: string, appName: string): SandboxedLaunchCommand => {
   if (!commandExists('/usr/bin/sandbox-exec')) {
-    throw new Error('macOS sandbox-exec is required to launch Gascii in a sandbox');
+    throw new Error(`macOS sandbox-exec is required to launch ${appName} in a sandbox`);
   }
 
-  const profilePath = writeMacSandboxProfile(cwd);
+  if (process.env.TERMPLAY_ENABLE_EXPERIMENTAL_MAC_SANDBOX !== '1') {
+    throw new Error('macOS process sandbox is not enabled for production use yet');
+  }
+
+  const profilePath = writeMacSandboxProfile(cwd, appName);
   return {
     commandText: `cd ${shellQuote(cwd)} && /usr/bin/sandbox-exec -f ${shellQuote(profilePath)} ${shellQuote(binaryPath)}`,
     label: 'sandbox-exec',
@@ -93,7 +97,7 @@ const createFirejailCommand = (firejailPath: string, cwd: string, binaryPath: st
   };
 };
 
-const createLinuxSandboxCommand = (cwd: string, binaryPath: string): SandboxedLaunchCommand => {
+const createLinuxSandboxCommand = (cwd: string, binaryPath: string, appName: string): SandboxedLaunchCommand => {
   const bwrapPath = firstExistingPath(['/usr/bin/bwrap', '/bin/bwrap']);
   if (bwrapPath) {
     return createBubblewrapCommand(bwrapPath, cwd, binaryPath);
@@ -104,10 +108,10 @@ const createLinuxSandboxCommand = (cwd: string, binaryPath: string): SandboxedLa
     return createFirejailCommand(firejailPath, cwd, binaryPath);
   }
 
-  throw new Error('bubblewrap or firejail is required to launch Gascii in a Linux sandbox');
+  throw new Error(`bubblewrap or firejail is required to launch ${appName} in a Linux sandbox`);
 };
 
-export const createGasciiSandboxCommand = (cwd: string, binaryPath: string): SandboxedLaunchCommand => {
+export const createGasciiSandboxCommand = (cwd: string, binaryPath: string, appName = 'Gascii'): SandboxedLaunchCommand => {
   if (process.env.TERMPLAY_DISABLE_PROCESS_SANDBOX === '1') {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Process sandbox cannot be disabled in production');
@@ -120,11 +124,11 @@ export const createGasciiSandboxCommand = (cwd: string, binaryPath: string): San
   }
 
   if (platform() === 'darwin') {
-    return createMacSandboxCommand(cwd, binaryPath);
+    return createMacSandboxCommand(cwd, binaryPath, appName);
   }
 
   if (platform() === 'linux') {
-    return createLinuxSandboxCommand(cwd, binaryPath);
+    return createLinuxSandboxCommand(cwd, binaryPath, appName);
   }
 
   throw new Error(`Unsupported sandbox platform: ${platform()}`);

@@ -1,9 +1,9 @@
-import { FileMusic, Video as VideoIcon, Box, FileVideo } from 'lucide-react';
+import { FileMusic, Video as VideoIcon, Box, FileVideo, Database, RefreshCw } from 'lucide-react';
 import { ElementType } from 'react';
 
 export type TerminalSeriesId = 'gascii' | 'mienjine';
 export type AssetMode = 'youtube' | 'asset-list';
-export type LibraryDirKey = 'video' | 'audio' | 'music' | 'glb' | 'camera' | 'stage' | 'vmd' | 'pmx';
+export type LibraryDirKey = 'video' | 'audio' | 'backup' | 'camera' | 'glb' | 'music' | 'pmx' | 'stage' | 'sync' | 'vmd';
 export type LauncherSettingKey = 'hwAccel' | 'autoClean' | 'highRes' | 'physics';
 
 type LibraryDir = {
@@ -31,12 +31,14 @@ export const SERIES_FEATURE_CONFIG = {
   mienjine: {
     assetMode: 'asset-list',
     libraryDirs: [
-      { key: 'music', icon: FileMusic },
-      { key: 'glb', icon: Box },
+      { key: 'backup', icon: Database },
       { key: 'camera', icon: VideoIcon },
+      { key: 'glb', icon: Box },
+      { key: 'music', icon: FileMusic },
+      { key: 'pmx', icon: Box },
       { key: 'stage', icon: Box },
-      { key: 'vmd', icon: FileVideo },
-      { key: 'pmx', icon: Box }
+      { key: 'sync', icon: RefreshCw },
+      { key: 'vmd', icon: FileVideo }
     ],
     settings: ['highRes', 'physics'],
     guideKey: 'mienjine',

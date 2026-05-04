@@ -60,12 +60,13 @@ export const registerAssetHandlers = (): void => {
     if (!configuredInstallPath) return { ok: false, error: 'Install path not set' };
     const installPath = await assertManagedInstallPath(request.seriesId, configuredInstallPath);
 
-    const targetDirFullPath = InputValidator.validateOutputRoot(installPath, asset.targetDir);
+    const assetRoot = path.join(installPath, 'assets');
+    const targetDirFullPath = InputValidator.validateOutputRoot(assetRoot, asset.targetDir);
     const targetFilePath = InputValidator.validateOutputDir(targetDirFullPath, path.join(targetDirFullPath, asset.fileName));
     const tmpFilePath = `${targetFilePath}.tmp`;
 
     await fs.mkdir(targetDirFullPath, { recursive: true }).catch(() => {});
-    await InputValidator.assertRealOutputDir(installPath, targetDirFullPath);
+    await InputValidator.assertRealOutputDir(assetRoot, targetDirFullPath);
     await InputValidator.assertRealOutputDir(targetDirFullPath, targetFilePath);
 
     const downloadId = `dl_${randomUUID()}`;

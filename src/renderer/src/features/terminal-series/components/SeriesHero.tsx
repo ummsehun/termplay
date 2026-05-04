@@ -9,7 +9,6 @@ import { Package, BookOpen, Rocket, Library } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore, ModalType } from '../../../shared/stores/uiStore';
 
-
 export const SeriesHero: React.FC = () => {
   const { t } = useTranslation();
   const { openModal } = useUIStore();
@@ -38,18 +37,8 @@ export const SeriesHero: React.FC = () => {
         </div>
       </div>
 
-      {/* Banner / Image Area */}
-      <div className="w-full h-48 bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl mb-4 overflow-hidden relative pointer-events-auto shadow-2xl">
-        <div className="absolute inset-0 bg-gradient-to-tr from-launcher-accent/20 to-transparent mix-blend-overlay" />
-        <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-          <h3 className="text-white font-bold text-xl drop-shadow-md">{t('launcher.new_updates')}</h3>
-          <div className="flex gap-1">
-            <div className="w-2 h-2 rounded-full bg-white" />
-            <div className="w-2 h-2 rounded-full bg-white/30" />
-            <div className="w-2 h-2 rounded-full bg-white/30" />
-          </div>
-        </div>
-      </div>
+      {/* Empty space to show the background banner */}
+      <div className="w-full h-48 mb-4 shrink-0" />
 
       {/* Translucent Content Panel (Events/Notices/Info) */}
       <div className="w-full flex-1 flex flex-col bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl mb-4 pointer-events-auto overflow-hidden shadow-2xl">
